@@ -1,0 +1,31 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "commonjs",
+    "lib": ["ES2022"],
+    "outDir": "./dist",
+    "rootDir": ".",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "baseUrl": ".",
+    "paths": {
+      "@config/*": ["config/*"],
+      "@outlook/*": ["src/outlook/*"],
+      "@drafting/*": ["src/drafting/*"],
+      "@documents/*": ["src/documents/*"],
+      "@arive/*": ["src/arive/*"],
+      "@dropbox/*": ["src/dropbox/*"],
+      "@sheets/*": ["src/sheets/*"],
+      "@feedback/*": ["src/feedback/*"],
+      "@shared/*": ["src/shared/*"]
+    }
+  },
+  "include": ["src/**/*", "config/**/*", "scripts/**/*"],
+  "exclude": ["node_modules", "dist", "tests"]
+}

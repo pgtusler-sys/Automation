@@ -1,0 +1,68 @@
+{
+  "name": "Email Scan - Every 15 Minutes",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "minutes", "minutesInterval": 15 }]
+        }
+      },
+      "name": "Cron Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "position": [250, 300],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "command": "cd /home/user/Automation && npx ts-node src/index.ts email"
+      },
+      "name": "Run Email Pipeline",
+      "type": "n8n-nodes-base.executeCommand",
+      "position": [450, 300],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "value1": "={{ $json.exitCode }}",
+              "operation": "notEqual",
+              "value2": 0
+            }
+          ]
+        }
+      },
+      "name": "Check Exit Code",
+      "type": "n8n-nodes-base.if",
+      "position": [650, 300],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "message": "=Email pipeline failed with exit code {{ $json.exitCode }}.\n\nStderr: {{ $json.stderr }}",
+        "additionalFields": {}
+      },
+      "name": "Alert on Failure",
+      "type": "n8n-nodes-base.emailSend",
+      "position": [850, 200],
+      "typeVersion": 1,
+      "disabled": true
+    }
+  ],
+  "connections": {
+    "Cron Trigger": {
+      "main": [[{ "node": "Run Email Pipeline", "type": "main", "index": 0 }]]
+    },
+    "Run Email Pipeline": {
+      "main": [[{ "node": "Check Exit Code", "type": "main", "index": 0 }]]
+    },
+    "Check Exit Code": {
+      "main": [
+        [{ "node": "Alert on Failure", "type": "main", "index": 0 }],
+        []
+      ]
+    }
+  },
+  "settings": { "executionOrder": "v1" }
+}
