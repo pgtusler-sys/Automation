@@ -37,12 +37,6 @@ export const settings = {
     password: process.env.ARIVE_PASSWORD || '',
   },
 
-  webhook: {
-    port: parseInt(process.env.WEBHOOK_PORT || '3100', 10),
-    secret: process.env.WEBHOOK_SECRET || '',
-    basePath: process.env.WEBHOOK_BASE_PATH || '/api',
-  },
-
   n8n: {
     webhookUrl: process.env.N8N_WEBHOOK_URL || 'http://localhost:5678',
   },

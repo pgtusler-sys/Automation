@@ -1,26 +1,56 @@
-import { scanForNewEmails } from './outlook/email-scanner';
+import { pollInboxSheet } from './sheets/email-inbox';
+import { generateDraftReply } from './drafting/auto-drafter';
+import { createDraftReply } from './outlook/draft-creator';
 import { trackDraftOutcomes } from './outlook/draft-tracker';
+import { routeEmailAttachments } from './documents/routing-orchestrator';
 import { syncPipeline } from './sheets/pipeline-tracker';
 import { loadCachedClientList } from './arive/client-list-scraper';
+import { getFeedbackStore } from './feedback/feedback-store';
 import { logFeedbackMetrics } from './feedback/analytics';
-import { processEmail } from './webhook/email-processor';
-import { startWebhookServer } from './webhook/server';
 import { logger } from './shared/logger';
+import { EmailMessage } from './shared/types';
 
 /**
  * Main orchestrator for the mortgage loan automation workflow.
  *
  * Commands:
- *   server  — Start webhook server (receives emails from Power Automate)
- *   email   — Batch scan via Graph API (legacy/fallback)
+ *   email   — Poll Google Sheet inbox for new emails from Power Automate
  *   sync    — Sync pipeline data to Google Sheets
  *   metrics — Log feedback metrics
  */
 
-export async function runEmailPipeline(): Promise<void> {
-  logger.info('=== Starting Email Pipeline (batch mode) ===');
+async function processEmail(email: EmailMessage): Promise<void> {
+  const loanFiles = loadCachedClientList();
+  const store = getFeedbackStore();
+  const stylePreferences = store.getStylePreferences();
 
-  const emails = await scanForNewEmails();
+  const draftText = await generateDraftReply(email, loanFiles, stylePreferences);
+  const draft = await createDraftReply(email, draftText);
+
+  store.recordDraft({
+    emailId: email.id,
+    draftId: draft.draftId,
+    generatedText: draftText,
+    finalText: null,
+    action: 'pending',
+    editDistance: null,
+    emailCategory: null,
+    createdAt: new Date().toISOString(),
+    resolvedAt: null,
+  });
+
+  if (email.hasAttachments) {
+    const decisions = await routeEmailAttachments(email, loanFiles);
+    for (const d of decisions) {
+      logger.info(`Routing decision for ${email.subject}: ${d.action} - ${d.reason}`);
+    }
+  }
+}
+
+export async function runEmailPipeline(): Promise<void> {
+  logger.info('=== Starting Email Pipeline ===');
+
+  const emails = await pollInboxSheet();
 
   for (const email of emails) {
     try {
@@ -44,12 +74,9 @@ export async function runPipelineSync(): Promise<void> {
 
 // Direct execution
 if (require.main === module) {
-  const command = process.argv[2] || 'server';
+  const command = process.argv[2] || 'email';
 
   switch (command) {
-    case 'server':
-      startWebhookServer();
-      break;
     case 'email':
       runEmailPipeline().catch((err) => {
         logger.error('Email pipeline failed', err);
@@ -66,6 +93,6 @@ if (require.main === module) {
       logFeedbackMetrics();
       break;
     default:
-      console.log('Usage: ts-node src/index.ts [server|email|sync|metrics]');
+      console.log('Usage: ts-node src/index.ts [email|sync|metrics]');
   }
 }
