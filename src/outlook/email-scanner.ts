@@ -25,7 +25,7 @@ function parseGraphEmail(raw: any): EmailMessage {
   };
 }
 
-function shouldSkipEmail(email: EmailMessage): boolean {
+export function shouldSkipEmail(email: EmailMessage): boolean {
   if (isNoReplyAddress(email.from.address)) {
     logger.debug(`Skipping no-reply email from ${email.from.address}`);
     return true;
