@@ -3,7 +3,7 @@ import { EmailMessage } from '../shared/types';
 import { shouldSkipEmail } from '../outlook/email-scanner';
 import { logger } from '../shared/logger';
 
-const INBOX_RANGE = 'Inbox!A:K';
+const INBOX_RANGE = 'Inbox!A:M';
 
 /**
  * Column layout for the Inbox sheet (Power Automate appends rows here):
@@ -18,12 +18,20 @@ const INBOX_RANGE = 'Inbox!A:K';
  *   I: HasAttachments (TRUE/FALSE)
  *   J: IsRead (TRUE/FALSE)
  *   K: Processed (YES when done — we write this)
+ *   L: TriageAction (DRAFT/SKIP/REVIEW — we write this)
+ *   M: TriageReason (explanation — we write this)
  */
 
 export const INBOX_HEADERS = [
   'MessageId', 'From', 'FromName', 'To', 'Subject',
-  'BodyPreview', 'Body', 'ReceivedDateTime', 'HasAttachments', 'IsRead', 'Processed',
+  'BodyPreview', 'Body', 'ReceivedDateTime', 'HasAttachments', 'IsRead',
+  'Processed', 'TriageAction', 'TriageReason',
 ];
+
+export interface InboxEmail {
+  email: EmailMessage;
+  rowIndex: number;
+}
 
 function parseRecipients(to: string): { name: string; address: string }[] {
   if (!to) return [];
@@ -53,9 +61,11 @@ function rowToEmailMessage(row: string[]): EmailMessage {
 }
 
 /**
- * Read the Inbox sheet, return unprocessed emails, and mark them as processed.
+ * Read the Inbox sheet. Returns unprocessed emails with their row indices.
+ * Does NOT mark rows as processed — the caller handles that via markInboxRowProcessed().
+ * Deterministic skips (no-reply, marketing) are still marked processed immediately.
  */
-export async function pollInboxSheet(): Promise<EmailMessage[]> {
+export async function pollInboxSheet(): Promise<InboxEmail[]> {
   const rows = await readSheetRange(INBOX_RANGE);
 
   if (rows.length <= 1) {
@@ -63,8 +73,7 @@ export async function pollInboxSheet(): Promise<EmailMessage[]> {
     return [];
   }
 
-  const emails: EmailMessage[] = [];
-  const processedRowIndices: number[] = [];
+  const results: InboxEmail[] = [];
 
   // Skip header row (index 0)
   for (let i = 1; i < rows.length; i++) {
@@ -75,25 +84,43 @@ export async function pollInboxSheet(): Promise<EmailMessage[]> {
     const processed = (row[10] || '').toUpperCase();
     if (processed === 'YES') continue;
 
+    // Column L (index 11) = TriageAction — skip already-triaged REVIEW rows
+    const existingTriage = (row[11] || '').toUpperCase();
+    if (existingTriage === 'REVIEW') continue;
+
     const email = rowToEmailMessage(row);
 
+    // Deterministic skip (no-reply, marketing) — mark processed immediately
     if (shouldSkipEmail(email)) {
       logger.debug(`Skipping filtered email: ${email.subject}`);
-      processedRowIndices.push(i);
+      const sheetRow = i + 1;
+      await writeSheetRange(`Inbox!K${sheetRow}:M${sheetRow}`, [['YES', 'SKIP', 'Filtered: no-reply or marketing']]);
       continue;
     }
 
-    emails.push(email);
-    processedRowIndices.push(i);
+    results.push({ email, rowIndex: i });
   }
 
-  // Mark all processed rows (including skipped) as "YES" in column K
-  for (const rowIndex of processedRowIndices) {
-    const sheetRow = rowIndex + 1; // 1-indexed
-    await writeSheetRange(`Inbox!K${sheetRow}`, [['YES']]);
-  }
+  logger.info(`Inbox poll: ${results.length} emails to triage`);
+  return results;
+}
 
-  logger.info(`Inbox poll: ${emails.length} actionable emails, ${processedRowIndices.length} total marked processed`);
+/**
+ * Mark a row as processed (column K = YES).
+ */
+export async function markInboxRowProcessed(rowIndex: number): Promise<void> {
+  const sheetRow = rowIndex + 1; // 1-indexed
+  await writeSheetRange(`Inbox!K${sheetRow}`, [['YES']]);
+}
 
-  return emails;
+/**
+ * Write triage results to columns L and M for a given row.
+ */
+export async function writeTriageResult(
+  rowIndex: number,
+  action: string,
+  reason: string
+): Promise<void> {
+  const sheetRow = rowIndex + 1; // 1-indexed
+  await writeSheetRange(`Inbox!L${sheetRow}:M${sheetRow}`, [[action, reason]]);
 }

@@ -3,6 +3,7 @@ import { settings } from '../../config/settings';
 import { EmailMessage, LoanFile, StylePreference } from '../shared/types';
 import { buildSystemPrompt, buildDraftPrompt } from './prompt-templates';
 import { getConversationHistory } from '../outlook/client';
+import { readTrainingExamples, selectRelevantExamples } from '../sheets/training-reader';
 import { sanitizeForPrompt } from '../shared/utils';
 import { logger } from '../shared/logger';
 
@@ -39,8 +40,17 @@ export async function generateDraftReply(
     loanContext = `Borrower: ${matchedFile.borrowerName}\nLoan #: ${matchedFile.loanNumber}\nProperty: ${matchedFile.propertyAddress}\nStatus: ${matchedFile.status}`;
   }
 
+  // Fetch training examples for few-shot context
+  let selectedExamples;
+  try {
+    const allExamples = await readTrainingExamples();
+    selectedExamples = selectRelevantExamples(email, allExamples, 2);
+  } catch (err) {
+    logger.warn('Failed to load training examples', err);
+  }
+
   const systemPrompt = buildSystemPrompt(stylePreferences);
-  const userPrompt = buildDraftPrompt(email, conversationContext, loanContext);
+  const userPrompt = buildDraftPrompt(email, conversationContext, loanContext, selectedExamples);
 
   const response = await client.messages.create({
     model: 'claude-sonnet-4-20250514',

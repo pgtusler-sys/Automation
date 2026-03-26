@@ -1,10 +1,13 @@
-import { pollInboxSheet } from './sheets/email-inbox';
+import { pollInboxSheet, markInboxRowProcessed, writeTriageResult } from './sheets/email-inbox';
 import { generateDraftReply } from './drafting/auto-drafter';
+import { triageEmail } from './drafting/email-triage';
 import { writeDraftToSheet } from './sheets/draft-writer';
 import { routeEmailAttachments } from './documents/routing-orchestrator';
 import { syncPipeline } from './sheets/pipeline-tracker';
 import { loadCachedClientList } from './arive/client-list-scraper';
 import { getFeedbackStore } from './feedback/feedback-store';
+import { syncSheetFeedback } from './feedback/sheet-feedback-reader';
+import { analyzeEditPatterns } from './drafting/feedback-learner';
 import { logFeedbackMetrics } from './feedback/analytics';
 import { logger } from './shared/logger';
 import { EmailMessage } from './shared/types';
@@ -13,9 +16,10 @@ import { EmailMessage } from './shared/types';
  * Main orchestrator for the mortgage loan automation workflow.
  *
  * Commands:
- *   email   — Poll Google Sheet inbox for new emails from Power Automate
- *   sync    — Sync pipeline data to Google Sheets
- *   metrics — Log feedback metrics
+ *   email    — Poll Google Sheet inbox, triage, and draft replies
+ *   sync     — Sync pipeline data to Google Sheets
+ *   metrics  — Log feedback metrics
+ *   feedback — Sync sheet feedback and re-analyze style patterns
  */
 
 async function processEmail(email: EmailMessage): Promise<void> {
@@ -49,11 +53,30 @@ async function processEmail(email: EmailMessage): Promise<void> {
 export async function runEmailPipeline(): Promise<void> {
   logger.info('=== Starting Email Pipeline ===');
 
-  const emails = await pollInboxSheet();
+  const loanFiles = loadCachedClientList();
+  const inboxEmails = await pollInboxSheet();
 
-  for (const email of emails) {
+  for (const { email, rowIndex } of inboxEmails) {
     try {
+      // Triage: decide whether to draft, skip, or flag for review
+      const triage = await triageEmail(email, loanFiles);
+      await writeTriageResult(rowIndex, triage.action, triage.reason);
+
+      if (triage.action === 'SKIP') {
+        logger.info(`Triage SKIP: ${email.subject} — ${triage.reason}`);
+        await markInboxRowProcessed(rowIndex);
+        continue;
+      }
+
+      if (triage.action === 'REVIEW') {
+        logger.info(`Triage REVIEW: ${email.subject} — ${triage.reason}`);
+        // Don't mark processed — human needs to handle
+        continue;
+      }
+
+      // DRAFT path
       await processEmail(email);
+      await markInboxRowProcessed(rowIndex);
     } catch (err) {
       logger.error(`Failed to process email ${email.id}: ${err}`);
     }
@@ -67,6 +90,26 @@ export async function runPipelineSync(): Promise<void> {
   const loanFiles = loadCachedClientList();
   await syncPipeline(loanFiles);
   logger.info('=== Pipeline Sync Complete ===');
+}
+
+export async function runFeedbackSync(): Promise<void> {
+  logger.info('=== Starting Feedback Sync ===');
+
+  const result = await syncSheetFeedback();
+  logger.info(`Synced ${result.synced} feedback entries (${result.errors} errors)`);
+
+  // Re-analyze patterns if we have enough edited drafts
+  const store = getFeedbackStore();
+  const edited = store.getEditedFeedback(5);
+  if (edited.length >= 5) {
+    logger.info('Enough edited drafts — analyzing edit patterns...');
+    const preferences = await analyzeEditPatterns();
+    logger.info(`Extracted ${preferences.length} style preferences`);
+  } else {
+    logger.info(`Only ${edited.length}/5 edited drafts — need more data for pattern analysis`);
+  }
+
+  logger.info('=== Feedback Sync Complete ===');
 }
 
 // Direct execution
@@ -89,7 +132,13 @@ if (require.main === module) {
     case 'metrics':
       logFeedbackMetrics();
       break;
+    case 'feedback':
+      runFeedbackSync().catch((err) => {
+        logger.error('Feedback sync failed', err);
+        process.exit(1);
+      });
+      break;
     default:
-      console.log('Usage: ts-node src/index.ts [email|sync|metrics]');
+      console.log('Usage: ts-node src/index.ts [email|sync|metrics|feedback]');
   }
 }

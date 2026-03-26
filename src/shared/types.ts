@@ -122,3 +122,18 @@ export interface RoutingDecision {
   match?: MatchResult;
   reason: string;
 }
+
+export type TriageAction = 'DRAFT' | 'SKIP' | 'REVIEW';
+
+export interface TriageResult {
+  action: TriageAction;
+  reason: string;
+}
+
+export interface TrainingExample {
+  emailFrom: string;
+  emailSubject: string;
+  emailBody: string;
+  yourReply: string;
+  category?: string;
+}
