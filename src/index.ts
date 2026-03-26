@@ -1,7 +1,6 @@
 import { pollInboxSheet } from './sheets/email-inbox';
 import { generateDraftReply } from './drafting/auto-drafter';
-import { createDraftReply } from './outlook/draft-creator';
-import { trackDraftOutcomes } from './outlook/draft-tracker';
+import { writeDraftToSheet } from './sheets/draft-writer';
 import { routeEmailAttachments } from './documents/routing-orchestrator';
 import { syncPipeline } from './sheets/pipeline-tracker';
 import { loadCachedClientList } from './arive/client-list-scraper';
@@ -25,11 +24,11 @@ async function processEmail(email: EmailMessage): Promise<void> {
   const stylePreferences = store.getStylePreferences();
 
   const draftText = await generateDraftReply(email, loanFiles, stylePreferences);
-  const draft = await createDraftReply(email, draftText);
+  const result = await writeDraftToSheet(email, draftText);
 
   store.recordDraft({
     emailId: email.id,
-    draftId: draft.draftId,
+    draftId: result.draftId,
     generatedText: draftText,
     finalText: null,
     action: 'pending',
@@ -59,8 +58,6 @@ export async function runEmailPipeline(): Promise<void> {
       logger.error(`Failed to process email ${email.id}: ${err}`);
     }
   }
-
-  await trackDraftOutcomes();
 
   logger.info('=== Email Pipeline Complete ===');
 }
