@@ -20,7 +20,6 @@ This repo contains two automation systems:
 - **Email:** pgtusler@gmail.com
 - **Phone:** 608-332-9579
 - **LinkedIn:** www.linkedin.com/in/Perry-Tusler
-- **Portfolio/Website:** [PORTFOLIO URL]
 
 ### Professional Summary
 
