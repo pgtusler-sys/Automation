@@ -41,7 +41,7 @@ export async function convertResumeToPdf(mdPath: string): Promise<string | null>
         printBackground: false,
       },
       launch_options: {
-        args: ['--no-sandbox', '--disable-setuid-sandbox'],
+        args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu', '--single-process'],
       },
     });
 
