@@ -6,3 +6,6 @@ data/feedback.db
 data/state.json
 *.log
 .DS_Store
+
+# Job search
+*.pdf
