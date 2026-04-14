@@ -24,7 +24,7 @@ This repo contains two automation systems:
 
 ### Professional Summary
 
-[Write 2-3 sentences summarizing your professional background, emphasizing RevOps/Marketing Ops experience, years of experience, and key strengths.]
+Revenue operations-minded sales professional with 10+ years across SaaS, mortgage, and B2B teams. Experience in pipeline management, CRM hygiene, cross-functional execution, forecasting support, and AI workflow automation using Clay.com and OpenClaw. Proven track record of exceeding quota, building automated workflows, and driving cross-functional alignment.
 
 ### Target Roles
 
@@ -60,13 +60,11 @@ This repo contains two automation systems:
 
 ### Experience Highlights
 
-[Replace with 3-5 bullet points of key career achievements with metrics, e.g.:]
-
-- [Built and scaled RevOps function from scratch at [Company], supporting $XM ARR growth]
-- [Reduced lead-to-opportunity conversion time by X% through automated routing in Salesforce]
-- [Implemented attribution model that identified $XM in previously untracked pipeline]
-- [Migrated CRM from [old system] to Salesforce, training X+ users across sales and marketing]
-- [Designed and launched lead scoring model that improved SQL rate by X%]
+- Generated $1.205M in ARR opportunities and built $1.8M+ in pipeline in 18 months at RollWorks/AdRoll
+- Exceeded quota in 15 of 18 months while owning outbound pipeline for 700+ enterprise accounts
+- Built automated prospecting and research workflows with Clay.com and AI to reduce manual prep
+- Originated $36M+ in loans at loanDepot, reaching top 10% of originators within 8 months (24% close rate)
+- Built AI-assisted workflows with OpenClaw to improve research, follow-up, and pipeline efficiency at WeFund Mortgage
 
 ---
 
