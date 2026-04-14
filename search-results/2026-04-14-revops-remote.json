@@ -1,7 +1,7 @@
 {
   "searchDate": "2026-04-14",
   "searchQuery": "Remote RevOps / Revenue Operations / GTM Operations / Marketing Operations / Sales Operations roles paying $100k+",
-  "totalResults": 9,
+  "totalResults": 13,
   "results": [
     {
       "company": "Vercel",
@@ -155,6 +155,74 @@
       },
       "totalScore": 82,
       "notes": "Revenue strategy adjacent to RevOps. Rula pays well across the board. Healthtech is a target industry. Worth exploring alongside the GTM Ops role."
+    },
+    {
+      "company": "Tebra",
+      "title": "Lead Marketing & Growth Operations Analyst",
+      "url": "https://job-boards.greenhouse.io/tebra/jobs/4664940005",
+      "location": "Remote (US)",
+      "salaryRange": "$127,000 - $145,000",
+      "postedDate": "2026-04 (active)",
+      "description": "Advance GTM analytics capability with focus on demand quality, attribution, and lifecycle engagement. Translate complex multi-touch customer journeys into clear insights that guide investment decisions, funnel strategy, and growth efficiency. Sits at the intersection of Marketing, Growth, and Revenue.",
+      "scoreBreakdown": {
+        "roleFit": 20,
+        "salaryFit": 25,
+        "locationFit": 25,
+        "companyFit": 20
+      },
+      "totalScore": 90,
+      "notes": "Strong analyst match. Healthtech SaaS, excellent comp for analyst level. Attribution and funnel work aligns well with Perry's pipeline and CRM experience."
+    },
+    {
+      "company": "CrowdStrike",
+      "title": "Global GTM Partner Business Operations Analyst",
+      "url": "https://jobs.accel.com/companies/crowdstrike/jobs/44120743-global-gtm-partner-business-operations-analyst-remote",
+      "location": "Remote (US)",
+      "salaryRange": "$100,000 - $170,000 + variable + equity",
+      "postedDate": "2026 (may be closed — verify)",
+      "description": "Day-to-day operations supporting the CrowdStrike partner ecosystem. Emphasis on alignment and support of the Global GTM team, focused on operational excellence in support of GTM goals and objectives.",
+      "scoreBreakdown": {
+        "roleFit": 18,
+        "salaryFit": 25,
+        "locationFit": 25,
+        "companyFit": 20
+      },
+      "totalScore": 88,
+      "notes": "Strong comp range. Cybersecurity SaaS (not a target industry but top-tier company). Partner ops focus is slightly different from core RevOps. Verify if still open."
+    },
+    {
+      "company": "Yelp",
+      "title": "Analyst/Senior Analyst, GTM Strategy & Operations",
+      "url": "https://www.yelp.careers/us/en/job/13800/Analyst-Senior-Analyst-GTM-Strategy-Operations",
+      "location": "Remote (US)",
+      "salaryRange": "~$90,000 - $116,000 (analyst) / higher for senior",
+      "postedDate": "2026 (active)",
+      "description": "Own end-to-end sales funnel and operational metric tracking. Design and optimize reporting structures for leadership. Deliver executive-level strategic analysis. SQL and Excel modeling required.",
+      "scoreBreakdown": {
+        "roleFit": 19,
+        "salaryFit": 18,
+        "locationFit": 25,
+        "companyFit": 18
+      },
+      "totalScore": 80,
+      "notes": "Analyst-level salary may land near $100K at senior tier. Strong GTM strategy focus. More data/SQL heavy — good if Perry wants to lean into analytics."
+    },
+    {
+      "company": "CrowdStrike",
+      "title": "GTM Data & Automation Analyst",
+      "url": "https://www.glassdoor.com/job-listing/gtm-data-automation-analyst-remote-crowdstrike-JV_KO0,34_KE35,46.htm?jl=1010015273872",
+      "location": "Remote",
+      "salaryRange": "~$95,000 - $150,000 (estimated from CrowdStrike pay bands)",
+      "postedDate": "2026 (active)",
+      "description": "GTM data and automation analyst role at CrowdStrike. Automation-focused, aligning well with Clay.com and OpenClaw workflow experience.",
+      "scoreBreakdown": {
+        "roleFit": 20,
+        "salaryFit": 20,
+        "locationFit": 25,
+        "companyFit": 20
+      },
+      "totalScore": 85,
+      "notes": "Automation angle is a strong match for Perry's Clay.com and OpenClaw experience. CrowdStrike is a top-tier employer. Salary not confirmed but likely meets threshold."
     }
   ]
 }
