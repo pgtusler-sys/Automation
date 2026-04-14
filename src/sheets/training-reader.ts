@@ -62,7 +62,7 @@ export function selectRelevantExamples(
 
   const scored = examples.map((ex) => {
     const exWords = tokenize(`${ex.emailSubject} ${ex.emailBody}`);
-    const overlap = emailWords.filter((w) => exWords.has(w)).length;
+    const overlap = [...emailWords].filter((w: string) => exWords.has(w)).length;
     return { example: ex, score: overlap };
   });
 

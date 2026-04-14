@@ -22,6 +22,11 @@ interface RawJobResult {
   postedDate: string | null;
   description: string;
   source: string;
+  preScored?: {
+    scoreBreakdown: ScoreBreakdown;
+    totalScore: number;
+    notes: string;
+  };
 }
 
 // ── SerpAPI Search ──
@@ -44,7 +49,7 @@ async function searchSerpApi(query: string): Promise<RawJobResult[]> {
       return [];
     }
 
-    const data = await response.json();
+    const data: any = await response.json();
     const jobs = data.jobs_results || [];
 
     return jobs.map((job: any) => ({
@@ -78,6 +83,7 @@ function loadLocalSearchResults(): RawJobResult[] {
       if (!Array.isArray(items)) continue;
 
       for (const item of items) {
+        const hasScores = item.scoreBreakdown && typeof item.totalScore === 'number';
         results.push({
           company: item.company || 'Unknown',
           title: item.title || '',
@@ -87,6 +93,18 @@ function loadLocalSearchResults(): RawJobResult[] {
           postedDate: item.postedDate || item.posted_date || null,
           description: item.description || '',
           source: `file:${file}`,
+          preScored: hasScores
+            ? {
+                scoreBreakdown: {
+                  roleFit: item.scoreBreakdown.roleFit || 0,
+                  salaryFit: item.scoreBreakdown.salaryFit || 0,
+                  locationFit: item.scoreBreakdown.locationFit || 0,
+                  companyFit: item.scoreBreakdown.companyFit || 0,
+                },
+                totalScore: item.totalScore,
+                notes: item.notes || '',
+              }
+            : undefined,
         });
       }
     } catch (err) {
@@ -201,7 +219,18 @@ export async function searchAndScoreJobs(): Promise<{
       continue;
     }
 
-    const { score, notes } = await scoreJob(job, profile);
+    // Use pre-existing scores from local JSON if available, otherwise score via API
+    let score: ScoreBreakdown;
+    let notes: string;
+    if (job.preScored) {
+      score = job.preScored.scoreBreakdown;
+      notes = job.preScored.notes;
+      logger.debug(`Using pre-scored data for ${job.company} — ${job.title}: ${job.preScored.totalScore}`);
+    } else {
+      const scored = await scoreJob(job, profile);
+      score = scored.score;
+      notes = scored.notes;
+    }
     const totalScore = score.roleFit + score.salaryFit + score.locationFit + score.companyFit;
 
     const listing = store.insertListing({

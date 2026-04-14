@@ -232,7 +232,7 @@ export async function triggerJobApplyTask(
       throw new Error(`Job apply webhook failed: ${response.statusText}`);
     }
 
-    const result = await response.json();
+    const result: any = await response.json();
     logger.info(`Auto-apply result for ${job.company}: ${result.success ? 'success' : 'failed'}`);
 
     return {

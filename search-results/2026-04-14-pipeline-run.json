@@ -1,0 +1,228 @@
+{
+  "searchDate": "2026-04-14",
+  "searchQuery": "pipeline run — 10 queries",
+  "totalResults": 13,
+  "results": [
+    {
+      "company": "Vercel",
+      "title": "GTM Operations Manager, Expansion and Retention",
+      "url": "https://vercel.com/careers/gtm-operations-manager-expansion-and-retention-us-5189305004",
+      "location": "Remote (US)",
+      "salaryRange": "$146,000 - $204,000",
+      "postedDate": "2026-04 (active)",
+      "description": "Experienced GTM Operations Manager to join the GTM Operations team. Influential role in creating processes and shaping how the company goes to market. Focus on expansion and retention motions.",
+      "scoreBreakdown": {
+        "roleFit": 22,
+        "salaryFit": 25,
+        "locationFit": 25,
+        "companyFit": 22
+      },
+      "totalScore": 94,
+      "notes": "Strong match. Vercel is a high-growth SaaS company. GTM Ops is a core target role. Excellent comp range."
+    },
+    {
+      "company": "Rula",
+      "title": "GTM Operations Manager",
+      "url": "https://builtin.com/job/growth-operations-manager-remote/6779593",
+      "location": "Remote (US)",
+      "salaryRange": "~$160,000 - $200,000 (estimated from comparable Rula roles)",
+      "postedDate": "2026-04 (active)",
+      "description": "Build operations for a hypergrowth sales team, improve GTM strategy efficiency for partnerships-driven demand, and scale the Growth Operations function. Remote-first company.",
+      "scoreBreakdown": {
+        "roleFit": 22,
+        "salaryFit": 25,
+        "locationFit": 25,
+        "companyFit": 22
+      },
+      "totalScore": 94,
+      "notes": "Strong match. Healthtech SaaS, VC-backed, hypergrowth. Similar Rula ops roles pay $160K-$213K. Great culture fit for remote-first."
+    },
+    {
+      "company": "Stedi",
+      "title": "GTM Strategy & Operations",
+      "url": "https://jobs.ashbyhq.com/stedi/946f7850-5b45-45dd-b577-fb845a2c6c95/application",
+      "location": "Remote (US)",
+      "salaryRange": "$140,000 - $200,000 OTE",
+      "postedDate": "2026-03 (active)",
+      "description": "Build the operational backbone of a data-driven GTM team. Design and maintain sales data infrastructure in HubSpot, develop reporting for pipeline health, partner with GTM leadership on territory modeling. Backed by Stripe, USV, Bloomberg Beta.",
+      "scoreBreakdown": {
+        "roleFit": 20,
+        "salaryFit": 25,
+        "locationFit": 25,
+        "companyFit": 20
+      },
+      "totalScore": 90,
+      "notes": "Strong match. HubSpot-centric role aligns with Perry's skills. B2B SaaS, well-funded startup. OTE structure includes variable comp."
+    },
+    {
+      "company": "Vercel",
+      "title": "Senior GTM Operations and Strategy Manager",
+      "url": "https://vercel.com/careers/senior-gtm-operations-and-strategy-manager-uk-us-4963956004",
+      "location": "Remote (US/UK)",
+      "salaryRange": "$194,700 - $243,400",
+      "postedDate": "2026-04 (active)",
+      "description": "Senior-level GTM operations and strategy role. Requires deeper experience in operations strategy, territory planning, and cross-functional leadership.",
+      "scoreBreakdown": {
+        "roleFit": 18,
+        "salaryFit": 25,
+        "locationFit": 25,
+        "companyFit": 22
+      },
+      "totalScore": 90,
+      "notes": "Stretch role — senior title may require more direct RevOps experience, but worth applying given strong pipeline and CRM background. Top-tier comp."
+    },
+    {
+      "company": "Pathrise",
+      "title": "Revenue Operations Manager (Ed-Tech)",
+      "url": "https://www.linkedin.com/jobs/view/revenue-operations-manager-ed-tech-remote-at-pathrise-3178515618",
+      "location": "Remote (US)",
+      "salaryRange": "~$103,000 - $155,000 (estimated from market data)",
+      "postedDate": "2026 (active)",
+      "description": "Reports to Head of Growth. Lead go-to-market operations in a sales and marketing environment. End-to-end revenue operations lifecycle with high autonomy.",
+      "scoreBreakdown": {
+        "roleFit": 23,
+        "salaryFit": 20,
+        "locationFit": 25,
+        "companyFit": 18
+      },
+      "totalScore": 86,
+      "notes": "Good fit. EdTech aligns with target industries. RevOps Manager title is ideal. Salary not confirmed but likely meets threshold. High autonomy is a plus."
+    },
+    {
+      "company": "Vidpros",
+      "title": "Revenue Operations Manager",
+      "url": "https://allremote.jobs/remote-job/vidpros-remote-revenue-operations-manager-revops-28607909-d3bd-463e-bd94-94ab3bf1e7d5",
+      "location": "Remote",
+      "salaryRange": null,
+      "postedDate": "2026 (active)",
+      "description": "Lead the integration of sales and marketing efforts, overseeing sales reps and a diverse marketing team. Revenue Operations Manager role at a growing company.",
+      "scoreBreakdown": {
+        "roleFit": 22,
+        "salaryFit": 15,
+        "locationFit": 25,
+        "companyFit": 15
+      },
+      "totalScore": 77,
+      "notes": "Decent fit on role. Salary not posted — worth investigating. Smaller company, cross-functional leadership opportunity."
+    },
+    {
+      "company": "Vercel",
+      "title": "Marketing Operations Manager",
+      "url": "https://www.glassdoor.com/job-listing/marketing-operations-manager-vercel-JV_KO0,28_KE29,35.htm?jl=1009854163685",
+      "location": "Remote",
+      "salaryRange": null,
+      "postedDate": "2026 (active)",
+      "description": "Marketing Operations Manager role at Vercel. Given Vercel's published pay bands ($146K-$204K for similar ops roles), comp is likely competitive.",
+      "scoreBreakdown": {
+        "roleFit": 20,
+        "salaryFit": 15,
+        "locationFit": 25,
+        "companyFit": 22
+      },
+      "totalScore": 82,
+      "notes": "Marketing Ops is a target role. Vercel pays well — comp likely $130K+ based on other ops roles. Worth applying alongside GTM Ops role."
+    },
+    {
+      "company": "HopSkipDrive",
+      "title": "RevOps Manager",
+      "url": "https://dynamitejobs.com/company/hopskipdrive/remote-job/revops-manager",
+      "location": "Remote (multi-state including CA)",
+      "salaryRange": "$90,000 - $120,000 + equity",
+      "postedDate": "2026-02 (active)",
+      "description": "RevOps Manager at a VC-backed transportation company. Full benefits, flexible vacation, 401(k), equity stock options.",
+      "scoreBreakdown": {
+        "roleFit": 23,
+        "salaryFit": 10,
+        "locationFit": 25,
+        "companyFit": 15
+      },
+      "totalScore": 73,
+      "notes": "Title is a direct match but salary range starts below $100K floor. Equity could offset. Not a target industry. Consider as backup."
+    },
+    {
+      "company": "Rula",
+      "title": "Revenue Strategy & Planning Manager",
+      "url": "https://jobs.upfront.com/companies/rula/jobs/64598558-revenue-strategy-planning-manager-remote",
+      "location": "Remote",
+      "salaryRange": null,
+      "postedDate": "2026 (active)",
+      "description": "Revenue strategy and planning role at Rula, a healthtech company. Focus on revenue forecasting, strategic planning, and operational execution.",
+      "scoreBreakdown": {
+        "roleFit": 20,
+        "salaryFit": 15,
+        "locationFit": 25,
+        "companyFit": 22
+      },
+      "totalScore": 82,
+      "notes": "Revenue strategy adjacent to RevOps. Rula pays well across the board. Healthtech is a target industry. Worth exploring alongside the GTM Ops role."
+    },
+    {
+      "company": "Tebra",
+      "title": "Lead Marketing & Growth Operations Analyst",
+      "url": "https://job-boards.greenhouse.io/tebra/jobs/4664940005",
+      "location": "Remote (US)",
+      "salaryRange": "$127,000 - $145,000",
+      "postedDate": "2026-04 (active)",
+      "description": "Advance GTM analytics capability with focus on demand quality, attribution, and lifecycle engagement. Translate complex multi-touch customer journeys into clear insights that guide investment decisions, funnel strategy, and growth efficiency. Sits at the intersection of Marketing, Growth, and Revenu",
+      "scoreBreakdown": {
+        "roleFit": 20,
+        "salaryFit": 25,
+        "locationFit": 25,
+        "companyFit": 20
+      },
+      "totalScore": 90,
+      "notes": "Strong analyst match. Healthtech SaaS, excellent comp for analyst level. Attribution and funnel work aligns well with Perry's pipeline and CRM experience."
+    },
+    {
+      "company": "CrowdStrike",
+      "title": "Global GTM Partner Business Operations Analyst",
+      "url": "https://jobs.accel.com/companies/crowdstrike/jobs/44120743-global-gtm-partner-business-operations-analyst-remote",
+      "location": "Remote (US)",
+      "salaryRange": "$100,000 - $170,000 + variable + equity",
+      "postedDate": "2026 (may be closed — verify)",
+      "description": "Day-to-day operations supporting the CrowdStrike partner ecosystem. Emphasis on alignment and support of the Global GTM team, focused on operational excellence in support of GTM goals and objectives.",
+      "scoreBreakdown": {
+        "roleFit": 18,
+        "salaryFit": 25,
+        "locationFit": 25,
+        "companyFit": 20
+      },
+      "totalScore": 88,
+      "notes": "Strong comp range. Cybersecurity SaaS (not a target industry but top-tier company). Partner ops focus is slightly different from core RevOps. Verify if still open."
+    },
+    {
+      "company": "Yelp",
+      "title": "Analyst/Senior Analyst, GTM Strategy & Operations",
+      "url": "https://www.yelp.careers/us/en/job/13800/Analyst-Senior-Analyst-GTM-Strategy-Operations",
+      "location": "Remote (US)",
+      "salaryRange": "~$90,000 - $116,000 (analyst) / higher for senior",
+      "postedDate": "2026 (active)",
+      "description": "Own end-to-end sales funnel and operational metric tracking. Design and optimize reporting structures for leadership. Deliver executive-level strategic analysis. SQL and Excel modeling required.",
+      "scoreBreakdown": {
+        "roleFit": 19,
+        "salaryFit": 18,
+        "locationFit": 25,
+        "companyFit": 18
+      },
+      "totalScore": 80,
+      "notes": "Analyst-level salary may land near $100K at senior tier. Strong GTM strategy focus. More data/SQL heavy — good if Perry wants to lean into analytics."
+    },
+    {
+      "company": "CrowdStrike",
+      "title": "GTM Data & Automation Analyst",
+      "url": "https://www.glassdoor.com/job-listing/gtm-data-automation-analyst-remote-crowdstrike-JV_KO0,34_KE35,46.htm?jl=1010015273872",
+      "location": "Remote",
+      "salaryRange": "~$95,000 - $150,000 (estimated from CrowdStrike pay bands)",
+      "postedDate": "2026 (active)",
+      "description": "GTM data and automation analyst role at CrowdStrike. Automation-focused, aligning well with Clay.com and OpenClaw workflow experience.",
+      "scoreBreakdown": {
+        "roleFit": 20,
+        "salaryFit": 20,
+        "locationFit": 25,
+        "companyFit": 20
+      },
+      "totalScore": 85,
+      "notes": "Automation angle is a strong match for Perry's Clay.com and OpenClaw experience. CrowdStrike is a top-tier employer. Salary not confirmed but likely meets threshold."
+    }
+  ]
+}

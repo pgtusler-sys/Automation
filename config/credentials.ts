@@ -28,7 +28,7 @@ export async function refreshMicrosoftToken(): Promise<TokenSet> {
     throw new Error(`Failed to refresh Microsoft token: ${response.statusText}`);
   }
 
-  const data = await response.json();
+  const data: any = await response.json();
   return {
     accessToken: data.access_token,
     refreshToken: data.refresh_token || refreshToken,
@@ -54,7 +54,7 @@ export async function refreshDropboxToken(): Promise<TokenSet> {
     throw new Error(`Failed to refresh Dropbox token: ${response.statusText}`);
   }
 
-  const data = await response.json();
+  const data: any = await response.json();
   return {
     accessToken: data.access_token,
     refreshToken: refreshToken,

@@ -39,7 +39,7 @@ export async function classifyDocument(
             },
             {
               type: 'text' as const,
-              content: CLASSIFICATION_PROMPT,
+              text: CLASSIFICATION_PROMPT,
             },
           ]
         : [{ type: 'text' as const, text: `Document filename: ${filePath}\nContent type: ${contentType}\n\n${CLASSIFICATION_PROMPT}` }],

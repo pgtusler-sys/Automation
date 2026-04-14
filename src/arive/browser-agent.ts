@@ -132,7 +132,7 @@ export async function triggerAriveTask(task: AriveTask): Promise<AriveResult> {
       throw new Error(`ARIVE webhook failed: ${response.statusText}`);
     }
 
-    const result = await response.json();
+    const result = (await response.json()) as AriveResult;
     logger.info(`ARIVE task ${task.type} completed: ${result.success}`);
     return result;
   } catch (err) {
