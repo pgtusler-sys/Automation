@@ -40,6 +40,9 @@ export async function convertResumeToPdf(mdPath: string): Promise<string | null>
         margin: { top: '0.75in', bottom: '0.75in', left: '0.75in', right: '0.75in' },
         printBackground: false,
       },
+      launch_options: {
+        args: ['--no-sandbox', '--disable-setuid-sandbox'],
+      },
     });
 
     if (result.content) {
