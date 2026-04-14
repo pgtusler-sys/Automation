@@ -15,11 +15,11 @@ This repo contains two automation systems:
 
 ### Personal Information
 
-- **Name:** [FIRST NAME] [LAST NAME]
-- **Location:** [CITY], CA (open to remote)
-- **Email:** [EMAIL ADDRESS]
-- **Phone:** [PHONE NUMBER]
-- **LinkedIn:** [LINKEDIN URL]
+- **Name:** Perry Tusler
+- **Location:** Los Angeles, CA (open to remote)
+- **Email:** pgtusler@gmail.com
+- **Phone:** 608-332-9579
+- **LinkedIn:** www.linkedin.com/in/Perry-Tusler
 - **Portfolio/Website:** [PORTFOLIO URL]
 
 ### Professional Summary
@@ -56,7 +56,7 @@ This repo contains two automation systems:
 
 ### Education
 
-[Add education details here if you want them included in applications.]
+- **B.S. Business Administration** — University of Wisconsin–Milwaukee
 
 ### Experience Highlights
 
