@@ -126,6 +126,96 @@ export async function runJobStatus(): Promise<void> {
   }
 }
 
+export async function generateApplyInstructions(): Promise<void> {
+  const store = getJobStore();
+  const profile = loadCandidateProfile();
+
+  // Get applications ready to apply (both 'applying' and 'needs_manual_apply')
+  const applying = store.getApplicationsByStatus('applying', 'needs_manual_apply');
+  const listings = store.getAllListings();
+  const listingMap = new Map(listings.map((l) => [l.id, l]));
+
+  const ready = applying
+    .map((app) => ({ app, listing: listingMap.get(app.listingId)! }))
+    .filter(({ listing }) => listing && listing.url)
+    .sort((a, b) => b.listing.totalScore - a.listing.totalScore);
+
+  if (ready.length === 0) {
+    console.log('No applications ready to apply. Run jobs:search and jobs:generate first.');
+    return;
+  }
+
+  console.log(`\n${'='.repeat(70)}`);
+  console.log(`  APPLY INSTRUCTIONS — ${ready.length} applications ready`);
+  console.log(`  Copy each block into Claude with computer use (claude.ai or Desktop)`);
+  console.log(`${'='.repeat(70)}\n`);
+
+  for (let i = 0; i < ready.length; i++) {
+    const { app, listing } = ready[i];
+    const ats = detectATS(listing.url);
+
+    const resumePath = app.resumePath
+      ? path.resolve(__dirname, '../../', app.resumePath)
+      : 'N/A';
+    const coverLetterPath = app.coverLetterPath
+      ? path.resolve(__dirname, '../../', app.coverLetterPath)
+      : undefined;
+
+    const instructions = buildApplyInstructions(
+      { company: listing.company, title: listing.title, url: listing.url, description: listing.description },
+      profile,
+      ats,
+      { resumePath, coverLetterPath }
+    );
+
+    console.log(`${'─'.repeat(70)}`);
+    console.log(`  [${i + 1}/${ready.length}] ${listing.company} — ${listing.title}`);
+    console.log(`  Score: ${listing.totalScore} | ATS: ${ats.ats} | ${listing.location}`);
+    console.log(`  URL: ${listing.url}`);
+    console.log(`  Resume: ${resumePath}`);
+    if (coverLetterPath) console.log(`  Cover Letter: ${coverLetterPath}`);
+    console.log(`${'─'.repeat(70)}`);
+    console.log('');
+    console.log('--- COPY BELOW THIS LINE ---');
+    console.log('');
+    console.log(instructions);
+    console.log('');
+    console.log('--- COPY ABOVE THIS LINE ---');
+    console.log('');
+    console.log(`After applying, run: npx ts-node src/index.ts jobs:mark-applied ${listing.company.toLowerCase().replace(/\s+/g, '-')}`);
+    console.log('');
+  }
+
+  console.log(`${'='.repeat(70)}`);
+  console.log(`  Done. ${ready.length} instruction blocks generated.`);
+  console.log(`${'='.repeat(70)}`);
+}
+
+export async function markApplied(companySlug: string): Promise<void> {
+  const store = getJobStore();
+  const apps = store.getAllApplications();
+  const listings = store.getAllListings();
+  const listingMap = new Map(listings.map((l) => [l.id, l]));
+
+  const slug = companySlug.toLowerCase();
+  const match = apps.find((a) => {
+    const listing = listingMap.get(a.listingId);
+    if (!listing) return false;
+    const company = listing.company.toLowerCase().replace(/[^a-z0-9\s-]/g, '').replace(/\s+/g, '-');
+    return company.includes(slug) && (a.status === 'applying' || a.status === 'needs_manual_apply');
+  });
+
+  if (!match) {
+    console.log(`No pending application found matching "${companySlug}"`);
+    return;
+  }
+
+  const listing = listingMap.get(match.listingId)!;
+  store.markApplied(match.id, 'manual');
+  syncTrackerFile();
+  console.log(`Marked as APPLIED: ${listing.company} — ${listing.title}`);
+}
+
 export async function runFullPipeline(): Promise<void> {
   logger.info('========================================');
   logger.info('=== Full Job Pipeline: Starting ===');

@@ -9,7 +9,7 @@ import { getFeedbackStore } from './feedback/feedback-store';
 import { syncSheetFeedback } from './feedback/sheet-feedback-reader';
 import { analyzeEditPatterns } from './drafting/feedback-learner';
 import { logFeedbackMetrics } from './feedback/analytics';
-import { runJobSearch, runMaterialsGeneration, runNotification, runJobStatus, runFullPipeline, runTrackerSync } from './jobs/pipeline';
+import { runJobSearch, runMaterialsGeneration, runNotification, runJobStatus, runFullPipeline, runTrackerSync, generateApplyInstructions, markApplied } from './jobs/pipeline';
 import { logger } from './shared/logger';
 import { EmailMessage } from './shared/types';
 
@@ -181,7 +181,24 @@ if (require.main === module) {
         process.exit(1);
       });
       break;
+    case 'jobs:apply':
+      generateApplyInstructions().catch((err) => {
+        logger.error('Apply instructions failed', err);
+        process.exit(1);
+      });
+      break;
+    case 'jobs:mark-applied':
+      const company = process.argv[3];
+      if (!company) {
+        console.log('Usage: ts-node src/index.ts jobs:mark-applied <company-slug>');
+        process.exit(1);
+      }
+      markApplied(company).catch((err) => {
+        logger.error('Mark applied failed', err);
+        process.exit(1);
+      });
+      break;
     default:
-      console.log('Usage: ts-node src/index.ts [email|sync|metrics|feedback|jobs:search|jobs:generate|jobs:notify|jobs:status|jobs:sync|jobs:full]');
+      console.log('Usage: ts-node src/index.ts [email|sync|metrics|feedback|jobs:search|jobs:generate|jobs:notify|jobs:status|jobs:sync|jobs:full|jobs:apply|jobs:mark-applied <company>]');
   }
 }
