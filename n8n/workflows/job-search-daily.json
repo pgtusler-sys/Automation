@@ -1,0 +1,82 @@
+{
+  "name": "Job Search Pipeline - Weekdays 8am PT",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 8 * * 1-5"
+            }
+          ]
+        }
+      },
+      "name": "Weekday 8am PT",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "position": [250, 300],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "command": "cd /home/user/Automation && npx ts-node src/index.ts jobs:full"
+      },
+      "name": "Run Job Pipeline",
+      "type": "n8n-nodes-base.executeCommand",
+      "position": [450, 300],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.exitCode === 0 }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "name": "Check Success",
+      "type": "n8n-nodes-base.if",
+      "position": [650, 300],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "command": "echo 'Job pipeline completed successfully'"
+      },
+      "name": "Log Success",
+      "type": "n8n-nodes-base.executeCommand",
+      "position": [850, 200],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "command": "echo 'Job pipeline FAILED — check logs at data/error.log' >&2"
+      },
+      "name": "Log Failure",
+      "type": "n8n-nodes-base.executeCommand",
+      "position": [850, 400],
+      "typeVersion": 1
+    }
+  ],
+  "connections": {
+    "Weekday 8am PT": {
+      "main": [[{ "node": "Run Job Pipeline", "type": "main", "index": 0 }]]
+    },
+    "Run Job Pipeline": {
+      "main": [[{ "node": "Check Success", "type": "main", "index": 0 }]]
+    },
+    "Check Success": {
+      "main": [
+        [{ "node": "Log Success", "type": "main", "index": 0 }],
+        [{ "node": "Log Failure", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "America/Los_Angeles"
+  }
+}

@@ -99,6 +99,24 @@ export async function getSentMessages(sinceDateTime: string, top = 100): Promise
   return data.value || [];
 }
 
+export async function sendEmail(
+  to: string,
+  subject: string,
+  htmlBody: string
+): Promise<any> {
+  const result = await graphRequest('/me/sendMail', {
+    method: 'POST',
+    body: JSON.stringify({
+      message: {
+        subject,
+        body: { contentType: 'HTML', content: htmlBody },
+        toRecipients: [{ emailAddress: { address: to } }],
+      },
+    }),
+  });
+  return result;
+}
+
 export async function getConversationHistory(
   conversationId: string,
   top = 5

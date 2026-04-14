@@ -40,4 +40,16 @@ export const settings = {
   n8n: {
     webhookUrl: process.env.N8N_WEBHOOK_URL || 'http://localhost:5678',
   },
+
+  jobs: {
+    enabled: process.env.JOB_SEARCH_ENABLED !== 'false',
+    scoreThreshold: parseInt(process.env.JOB_SCORE_THRESHOLD || '75', 10),
+    autoGenerateThreshold: parseInt(process.env.JOB_AUTO_GENERATE_THRESHOLD || '80', 10),
+    notifyEmail: process.env.JOB_NOTIFY_EMAIL || '',
+    serpApiKey: process.env.SERP_API_KEY || '',
+    autoApply: {
+      enabled: process.env.JOB_AUTO_APPLY_ENABLED === 'true',
+      maxPerDay: parseInt(process.env.JOB_MAX_DAILY_APPLIES || '10', 10),
+    },
+  },
 } as const;

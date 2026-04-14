@@ -137,3 +137,90 @@ export interface TrainingExample {
   yourReply: string;
   category?: string;
 }
+
+// ── Job Search Types ──
+
+export type ATSType = 'greenhouse' | 'ashby' | 'lever' | 'workday' | 'generic';
+
+export type ApplicationStatus =
+  | 'identified'
+  | 'applying'
+  | 'applied'
+  | 'phone_screen'
+  | 'interview'
+  | 'take_home'
+  | 'offer'
+  | 'accepted'
+  | 'declined'
+  | 'rejected'
+  | 'withdrawn'
+  | 'no_response'
+  | 'needs_manual_apply';
+
+export type ApplyMethod = 'manual' | 'auto';
+
+export interface ScoreBreakdown {
+  roleFit: number;
+  salaryFit: number;
+  locationFit: number;
+  companyFit: number;
+}
+
+export interface JobListing {
+  id: string;
+  company: string;
+  title: string;
+  url: string;
+  location: string;
+  salaryRange: string | null;
+  postedDate: string | null;
+  description: string;
+  scoreBreakdown: ScoreBreakdown;
+  totalScore: number;
+  notes: string;
+  source: string;
+  contentHash: string;
+  discoveredAt: string;
+}
+
+export interface JobApplication {
+  id: string;
+  listingId: string;
+  status: ApplicationStatus;
+  appliedAt: string | null;
+  applyMethod: ApplyMethod | null;
+  followUpDate: string | null;
+  resumePath: string | null;
+  coverLetterPath: string | null;
+  screenshotPaths: string | null;
+  notes: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface JobSearchRun {
+  id: string;
+  searchQuery: string;
+  source: string;
+  totalResults: number;
+  newResults: number;
+  ranAt: string;
+}
+
+export interface CandidateProfile {
+  name: string;
+  location: string;
+  email: string;
+  phone: string;
+  linkedin: string;
+  summary: string;
+  targetRoles: string[];
+  salaryMin: number;
+  locationPreference: string;
+  companySize: string;
+  industries: string[];
+  dealBreakers: string[];
+  skills: string[];
+  education: string;
+  experienceHighlights: string[];
+}

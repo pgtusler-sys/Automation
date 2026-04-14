@@ -9,6 +9,7 @@ import { getFeedbackStore } from './feedback/feedback-store';
 import { syncSheetFeedback } from './feedback/sheet-feedback-reader';
 import { analyzeEditPatterns } from './drafting/feedback-learner';
 import { logFeedbackMetrics } from './feedback/analytics';
+import { runJobSearch, runMaterialsGeneration, runNotification, runJobStatus, runFullPipeline, runTrackerSync } from './jobs/pipeline';
 import { logger } from './shared/logger';
 import { EmailMessage } from './shared/types';
 
@@ -16,10 +17,16 @@ import { EmailMessage } from './shared/types';
  * Main orchestrator for the mortgage loan automation workflow.
  *
  * Commands:
- *   email    — Poll Google Sheet inbox, triage, and draft replies
- *   sync     — Sync pipeline data to Google Sheets
- *   metrics  — Log feedback metrics
- *   feedback — Sync sheet feedback and re-analyze style patterns
+ *   email        — Poll Google Sheet inbox, triage, and draft replies
+ *   sync         — Sync pipeline data to Google Sheets
+ *   metrics      — Log feedback metrics
+ *   feedback     — Sync sheet feedback and re-analyze style patterns
+ *   jobs:search  — Search job boards, score, and save listings
+ *   jobs:generate— Generate tailored resume + cover letter for high-scoring listings
+ *   jobs:notify  — Send email digest of job search activity
+ *   jobs:status  — Print pipeline summary
+ *   jobs:sync    — Sync tracker.md with SQLite
+ *   jobs:full    — Run complete job search pipeline
  */
 
 async function processEmail(email: EmailMessage): Promise<void> {
@@ -138,7 +145,43 @@ if (require.main === module) {
         process.exit(1);
       });
       break;
+    case 'jobs:search':
+      runJobSearch().catch((err) => {
+        logger.error('Job search failed', err);
+        process.exit(1);
+      });
+      break;
+    case 'jobs:generate':
+      runMaterialsGeneration().catch((err) => {
+        logger.error('Materials generation failed', err);
+        process.exit(1);
+      });
+      break;
+    case 'jobs:notify':
+      runNotification().catch((err) => {
+        logger.error('Job notification failed', err);
+        process.exit(1);
+      });
+      break;
+    case 'jobs:status':
+      runJobStatus().catch((err) => {
+        logger.error('Job status failed', err);
+        process.exit(1);
+      });
+      break;
+    case 'jobs:sync':
+      runTrackerSync().catch((err) => {
+        logger.error('Tracker sync failed', err);
+        process.exit(1);
+      });
+      break;
+    case 'jobs:full':
+      runFullPipeline().catch((err) => {
+        logger.error('Full job pipeline failed', err);
+        process.exit(1);
+      });
+      break;
     default:
-      console.log('Usage: ts-node src/index.ts [email|sync|metrics|feedback]');
+      console.log('Usage: ts-node src/index.ts [email|sync|metrics|feedback|jobs:search|jobs:generate|jobs:notify|jobs:status|jobs:sync|jobs:full]');
   }
 }
