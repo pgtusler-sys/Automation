@@ -7,5 +7,6 @@ data/state.json
 *.log
 .DS_Store
 
-# Job search
-*.pdf
+# Job search — ignore PDFs in main applications/ but allow analyst folder
+applications/**/*.pdf
+!applications-analyst/**/*.pdf
