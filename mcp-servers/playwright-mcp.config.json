@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "playwright": {
+      "command": "npx",
+      "args": [
+        "@playwright/mcp@latest",
+        "--headless=false",
+        "--browser=chromium",
+        "--output-dir=/tmp/playwright-mcp-screenshots",
+        "--allowed-origins=*"
+      ],
+      "env": {}
+    }
+  }
+}
