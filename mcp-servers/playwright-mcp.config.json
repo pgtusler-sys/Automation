@@ -4,7 +4,7 @@
       "command": "npx",
       "args": [
         "@playwright/mcp@latest",
-        "--headless=false",
+        "--headless=true",
         "--browser=chromium",
         "--output-dir=/tmp/playwright-mcp-screenshots",
         "--allowed-origins=*"
