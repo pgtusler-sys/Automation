@@ -27,7 +27,7 @@ If a user is willing to spend ten seconds on their phone to solve a CAPTCHA or a
 
 ## The product
 
-**Relay** is a drop-in SDK for agent builders. One function call turns any human-required step into a phone notification:
+**Relay** is a drop-in SDK for agent builders. One function call turns a CAPTCHA into a push notification:
 
     await relay.pauseForHuman({
       reason: 'captcha',
@@ -38,32 +38,28 @@ If a user is willing to spend ten seconds on their phone to solve a CAPTCHA or a
 
 Under the hood:
 
-- Agent pauses at the human-required moment
-- User gets a push notification with a live view of the exact task
-- User solves it on their phone in seconds
+- Agent pauses when a CAPTCHA appears
+- User gets a push notification with a live view of the exact page
+- User solves the CAPTCHA in seconds
 - Agent resumes with the completed state
 
-The user never has to leave what they're doing. The agent never has to give up. The human-required step gets handled by an actual human — which is what the verification was asking for in the first place.
+The user never has to leave what they're doing. The agent never has to give up. The CAPTCHA gets solved by an actual human — which is what the verification was asking for in the first place.
 
-This is *not* a CAPTCHA solver. The human solving the verification is the same user the agent is acting on behalf of. The verification does exactly what it was designed to do: confirm a real human is present and responsible. What we change is the UX of that confirmation.
+This is *not* a CAPTCHA solver service. The human solving the verification is the same user the agent is acting on behalf of. The verification does exactly what it was designed to do: confirm a real human is present and responsible. What we change is the UX of that confirmation.
+
+SMS/email OTP codes are explicitly out of scope — users can already handle those via text copy-paste without needing a live browser view.
 
 ## Initial focus
 
-CAPTCHA handoff first, because it's the most universal pain point and the one that validates the core architecture. Once that works, the same primitive extends to:
-
-- SMS 2FA codes
-- Payment confirmations
-- Biometric verification (Face ID, Touch ID)
-- E-signature flows
-- Multi-factor authentication across enterprise systems
-
-Each is a variation of "agent hits a human-required step, pings the user, user completes it, agent resumes." Once the infrastructure exists, the long tail of integrations is additive.
+- **In scope for v0:** CAPTCHA handoff — the one verification type that can't be text-copied and requires visual interaction with the page
+- **Out of scope:** SMS/email OTPs — text-copiable, users already handle these without tooling
+- **Future scope:** Keyboard-input verifications (require custom event forwarding per Browserbase docs), other visual verifications (payment confirmations, biometric prompts, e-signature flows)
 
 ## Who I think the customer is
 
 My best guess — genuinely still figuring this out:
 
-**Primary (near-term):** Indie developers and small teams building autonomous agents. They're technical enough to integrate an SDK, sharp enough to feel the pain of broken handoffs, and motivated enough to pay for infrastructure that unblocks real workflows.
+**Primary (near-term):** Agent builders running web automation on sites that deploy CAPTCHA — job applications, CRM entry, form-heavy workflows. The canonical example is my own job application runner. They're technical enough to integrate an SDK, sharp enough to feel the pain of broken handoffs, and motivated enough to pay for infrastructure that unblocks real workflows.
 
 **Secondary (medium-term):** Agent platforms and RPA tools. If Relay becomes the default way to handle human steps, platforms integrate it as a native feature.
 
@@ -82,6 +78,15 @@ My best guess — genuinely still figuring this out:
 - Bigger players (Browserbase, Anchor) might absorb this as a feature
 - Session-binding problem might be harder than it looks (that's what validation tests)
 - Users might prefer slower fully-auto over faster sometimes-interactive
+
+## Validation status
+
+- **Q1 (cloud session + live-view URL):** CONFIRMED — Browserbase session creation and debug URL generation work reliably
+- **Q2 (human-side solve propagates to agent session):**
+  - **Desktop:** CONFIRMED — human solved hCaptcha in live-view browser, Playwright reconnected and read the token (2083-char JWT) from the same session
+  - **Mobile:** PARTIAL — iframe wrapper approach loads session on mobile browsers successfully, but hCaptcha demo page served a drag-heavy challenge inappropriate for mobile touch. Testing against real production forms next to confirm the challenge distribution is the real-world bottleneck, not mobile interaction.
+- **Q3 (token usable for submission):** Inferable from desktop Q2 pass — the token is a standard hCaptcha response token, structurally identical to what a direct solve produces
+- **Mobile UX architecture:** Hosted iframe wrapper page with Browserbase's documented sandbox flags (`sandbox="allow-same-origin allow-scripts"`). Direct Browserbase debug URL doesn't work reliably on mobile browsers; the iframe wrapper does.
 
 ## What I'm doing now
 
