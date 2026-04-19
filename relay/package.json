@@ -1,0 +1,19 @@
+{
+  "name": "relay",
+  "version": "0.0.1",
+  "description": "Human handoff infrastructure for AI agents — validation sprint",
+  "private": true,
+  "scripts": {
+    "validate": "tsx validate.ts"
+  },
+  "dependencies": {
+    "@browserbasehq/sdk": "^2.0.0",
+    "dotenv": "^16.4.7",
+    "playwright-core": "^1.49.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0"
+  }
+}

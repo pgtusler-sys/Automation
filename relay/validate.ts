@@ -3,17 +3,11 @@
  *
  * Tests whether a human solving a CAPTCHA on a phone can produce
  * a valid token inside an agent's separate cloud browser session.
- *
- * NOTE: The Browserbase SDK API shape may have changed since this
- * was written. Claude Code should verify the current API (method
- * names, parameter shapes) and adapt before running.
  */
 
-import { Browserbase } from '@browserbasehq/sdk';
+import 'dotenv/config';
+import Browserbase from '@browserbasehq/sdk';
 import { chromium, type Browser, type Page } from 'playwright-core';
-import * as dotenv from 'dotenv';
-
-dotenv.config();
 
 const API_KEY = process.env.BROWSERBASE_API_KEY;
 const PROJECT_ID = process.env.BROWSERBASE_PROJECT_ID;
@@ -46,10 +40,6 @@ async function createSessionWithLiveView() {
   log('Requesting live-view URL...');
   const liveView = await bb.sessions.debug(session.id);
   const debuggerUrl = liveView.debuggerFullscreenUrl || liveView.debuggerUrl;
-
-  if (!debuggerUrl) {
-    throw new Error('No debugger URL returned');
-  }
 
   log('Live-view URL obtained');
   console.log('\n  OPEN THIS URL ON YOUR PHONE:\n');

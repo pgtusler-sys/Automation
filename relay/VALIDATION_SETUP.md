@@ -18,20 +18,20 @@ Sign up at https://www.browserbase.com. Free tier is sufficient. After signup:
 1. Create a new project
 2. Copy your API key and Project ID
 
-### 2. Local project setup
+### 2. Install dependencies
 
-    npm init -y
-    npm install playwright-core @browserbasehq/sdk dotenv
-    npm install -D typescript @types/node tsx
+From this directory (`relay/`):
+
+    npm install
 
 ### 3. Create .env file
 
-    BROWSERBASE_API_KEY=your_key_here
-    BROWSERBASE_PROJECT_ID=your_project_id_here
+    cp .env.example .env
+    # then edit .env and fill in BROWSERBASE_API_KEY and BROWSERBASE_PROJECT_ID
 
 ### 4. Run
 
-    npx tsx validate.ts
+    npm run validate
 
 ## What you'll do during the test
 
