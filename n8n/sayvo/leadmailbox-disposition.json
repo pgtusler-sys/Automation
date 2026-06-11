@@ -1,0 +1,177 @@
+{
+  "name": "IHL \u00b7 LeadMailbox Disposition Write-back",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "leadmailbox/disposition",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "wh-disp-0001",
+      "name": "Webhook: Disposition",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        260,
+        400
+      ],
+      "webhookId": "ihl-lmb-disposition-0001"
+    },
+    {
+      "parameters": {
+        "jsCode": "// ===================== CONFIG (confirm these 3 things) =====================\nconst BASE = 'https://api.leadmailbox.com/v2';\n// (1) PATCH key for MAIN Lead Status \u2014 CONFIRM with Dan: 'status' | 'statusid' | 'leadstatus'\nconst STATUS_KEY = 'status';\n// (2) disposition -> { status: LMB main Lead Status to set, label: field_121 value, booked }\n//     David creates the 'AI - *' statuses in LMB and picks SALES_BOOKED_STATUS.\nconst SALES_BOOKED_STATUS = 'Contact';   // <-- David: the sales-rep entry status for a booked appt\nconst MAP = {\n  'qualified booked':     { status: SALES_BOOKED_STATUS,   label: 'Qualified Booked',       booked: true  },\n  'qualified didnt book': { status: 'AI - Qualified No Book', label: \"Qualified - Didn't Book\", booked: false },\n  'unqualified':          { status: 'AI - Unqualified',    label: 'Unqualified',            booked: false },\n  'not interested':       { status: 'AI - Not Interested', label: 'Not Interested',         booked: false },\n  'busy':                 { status: 'AI - Busy',           label: 'Busy',                   booked: false },\n  'voicemail':            { status: 'AI - Voicemail',      label: 'Voicemail',              booked: false },\n  'wrong contact':        { status: 'AI - Wrong Contact',  label: 'Wrong Contact',          booked: false },\n  'call failed':          { status: 'AI - Call Failed',    label: 'Call Failed',            booked: false },\n  'other':                { status: 'AI - Other',          label: 'Other',                  booked: false }\n};\n// (3) round-robin pool for booked leads (David, Mike). Counter persists in workflow static data.\nconst ROUND_ROBIN = [100173, 107230];\n// =========================================================================\n\nconst clean = (s) => (s || '').toString().toLowerCase()\n  .replace(/[\u2018\u2019\u02bc']/g, '')\n  .replace(/[\u2010-\u2015-]/g, ' ')\n  .replace(/\\s+/g, ' ').trim();\n\nconst body = $json.body || {};\nconst c = body.customData || body || {};\nconst leadid = c.leadid || c.lead_id || body.leadid || null;\nconst disp = clean(c.stage_name || c.disposition || c.call_category);\nconst m = MAP[disp] || null;\n\nlet userid = null;\nif (m && m.booked) {\n  const sd = $getWorkflowStaticData('global');\n  sd.rr = ((typeof sd.rr === 'number' ? sd.rr : -1) + 1) % ROUND_ROBIN.length;\n  userid = ROUND_ROBIN[sd.rr];\n}\n\nreturn [{ json: {\n  base: BASE,\n  leadid: leadid,\n  ready: !!(m && leadid),\n  status_key: STATUS_KEY,\n  status_value: m ? m.status : null,\n  field_121: m ? m.label : null,                 // AI Status\n  field_122: c.appointment || null,              // AI Appointment (booked time)\n  field_123: c.transcript_url || null,           // AI Transcript (URL)\n  field_124: c.recording_url || null,            // AI Recording (URL)\n  field_125: c.summary || c.ai_summary || null,  // AI Summary\n  note: c.note_html || c.note || null,\n  userid: userid,\n  disposition_in: disp,\n  raw: c\n}}];\n"
+      },
+      "id": "norm-0001",
+      "name": "Normalize",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        500,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "c-ready",
+              "leftValue": "={{ $json.ready }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-ready-0001",
+      "name": "IF: Ready?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        740,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ $json.base + '/leads/' + $json.leadid }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify(Object.assign({ 'api-account': $env.LMB_API_ACCOUNT, 'api-key': $env.LMB_API_KEY }, $json.status_value ? { [$json.status_key]: $json.status_value } : {}, $json.field_121 ? { field_121: $json.field_121 } : {}, $json.field_122 ? { field_122: $json.field_122 } : {}, $json.field_123 ? { field_123: $json.field_123 } : {}, $json.field_124 ? { field_124: $json.field_124 } : {}, $json.field_125 ? { field_125: $json.field_125 } : {}, $json.note ? { note: $json.note } : {}, $json.userid ? { userid: $json.userid } : {})) }}",
+        "options": {}
+      },
+      "id": "lmb-patch-0001",
+      "name": "LeadMailbox: PATCH",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        980,
+        300
+      ],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { success: true, ready: $json.ready } }}",
+        "options": {}
+      },
+      "id": "resp-0001",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1240,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## IHL \u00b7 LeadMailbox disposition write-back\\n\\nGHL fires this after each AI call.\\n\\n**Send in customData:** leadid, stage_name (disposition), summary, transcript_url, recording_url, appointment, note_html.\\n\\n**Set n8n env vars:** LMB_API_ACCOUNT=IHLI01, LMB_API_KEY=<rotated key> (keeps the secret out of the JSON).\\n\\n**Confirm before go-live:** (1) STATUS_KEY with Dan, (2) David creates the AI- statuses + picks SALES_BOOKED_STATUS, (3) leadid token from LMB intake.\\n\\nUnknown disposition or missing leadid -> IF:Ready? false -> no write (safe).",
+        "height": 300,
+        "width": 420,
+        "color": 4
+      },
+      "id": "sticky-0001",
+      "name": "Sticky: Setup",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        260,
+        40
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook: Disposition": {
+      "main": [
+        [
+          {
+            "node": "Normalize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize": {
+      "main": [
+        [
+          {
+            "node": "IF: Ready?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF: Ready?": {
+      "main": [
+        [
+          {
+            "node": "LeadMailbox: PATCH",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LeadMailbox: PATCH": {
+      "main": [
+        [
+          {
+            "node": "Respond",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": []
+}
