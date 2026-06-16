@@ -6,13 +6,14 @@
   owner only on TL (Asad 31874979), notes via v1, hyphen/apostrophe-proof stage matching.
 - Remaining: GHL must send FULL stage_name per branch (not "Qualified"); production URL switch.
 
-## Independent Lending (LeadMailbox -> GHL -> n8n -> LeadMailbox) — IN PROGRESS
-- LMB API (from Dan English email, ihlend acct IHLI01):
-  - Intake: LMB posts full lead payload to our webhook (configured Settings | Services)
-  - Write-back: single PATCH https://api.leadmailbox.com/v2/leads/{LEADID}
-    body: api-account, api-key, field_121 (AI status), userid (assign LO), note, field_125 (AI summary)
-  - API key was emailed in plaintext -> ask Dan to ROTATE once live. Store only as n8n credential.
-- Same 9 dispositions as Kingsmen; reuse optimized SynthFlow extractor (rules v2 with priority order).
-- BLOCKERS: (1) valid field_121 values / is it dropdown or free text; (2) sample new-lead webhook
-  payload (fire test from Settings | Services); (3) userid roster + round-robin weights
-  (assign on Qualified Booked only); (4) IHL voice branding + GHL location id.
+## Independent Lending (LeadMailbox -> GHL -> n8n -> LeadMailbox) — IN PROGRESS (dry-run green)
+- Write-back workflow `leadmailbox-disposition.json` updated to current working state:
+  two-bucket model, STATUS_KEY='call_status', leadid regex fallback, DRY_RUN guard.
+- CONFIRMED: GHL location id dVtkyM31aGC8IWAKrcvW; leadid plumbing works (dry-run leadid=36769638);
+  two buckets = "Qualified Booked" / "Contacted Not Booked"; voice = "Sam from Independent Lending"
+  (hard money loans). Dry-run preview maps "not interested" -> Contacted Not Booked + field_121.
+- LAST BLOCKERS (see QUESTIONS_FOR_DAN.md): (1) Dan's full call_status value enum + whether
+  call_status is the bucket field or separate; (2) intake Service token syntax (#{LeadID} vs {leadid})
+  + which Status Trigger fires it (leads arrive as "Future Contact", not "New"); (3) create the two
+  bucket statuses in LMB; (4) set n8n env vars LMB_API_ACCOUNT/LMB_API_KEY; (5) ROTATE api-key
+  (shown in screenshots); then flip DRY_RUN=false.

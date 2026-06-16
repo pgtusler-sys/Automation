@@ -31,6 +31,8 @@ Custom field tokens: {field_NNN} (confirmed pattern field_121/field_125).
 ## WRITE-BACK: disposition -> single PATCH
 PATCH https://api.leadmailbox.com/v2/leads/{leadid}
 { api-account, api-key,
+  call_status: <pipeline status>,   <- Dan's doc uses KEY 'call_status' (NOT 'status').
+                                       Example value he gave: "No Answer".
   field_121: AI Status (disposition label),
   field_122: AI Appointment (booked time, only on Qualified Booked),
   field_123: AI Transcript (URL),
@@ -38,6 +40,28 @@ PATCH https://api.leadmailbox.com/v2/leads/{leadid}
   field_125: AI Summary,
   note: optional,
   userid: LO id (only on Qualified Booked, weighted round-robin) }
+
+### Two-bucket model (per Perry, 2026-06-15)
+Leads land in only TWO LMB statuses; granular disposition kept in field_121.
+  Qualified Booked   <- booked dispositions (assign LO via round-robin)
+  Contacted Not Booked <- everything else
+  STATUS_KEY in Normalize = 'call_status'   (Dan-documented key)
+OPEN (Dan): full valid call_status value list (e.g. is "Qualified Booked" /
+  "Contacted Not Booked" valid, or only outcome strings like "No Answer"?), and
+  whether call_status IS the bucket field or a SEPARATE field from main Lead Status.
+SECURITY: api-key ae...c8e0 was shown in a screenshot 2026-06-15 -> ROTATE; env var only.
+
+### leadid plumbing (CONFIRMED working 2026-06-15)
+GHL disposition webhook must send customData row: leadid = {{contact.leadid_leadmailbox}}.
+That GHL field is populated at intake. Currently the LMB->GHL push writes the id into the
+lead_notes blob ("LeadMailbox Lead ID: 36769638"); cleanest fix = map #{LeadID} -> the
+dedicated GHL field leadid_leadmailbox. Normalize also has a regex fallback that parses
+the id out of lead_notes if the dedicated field is empty. Verified dry-run leadid=36769638.
+
+### Voice branding (CONFIRMED 2026-06-15)
+"Sam from Independent Lending" (hard money loans). custom_introduction field.
+e.g. "So #{First Name}, it's just Sam from Independent Lending. You uhh submitted an
+inquiry about a hard money loan with us, right?"
 
 ## Users (Settings | Users)
 107371 Arman Zolmajd arman@sayvo.ai (SayVo - EXCLUDE from routing)
