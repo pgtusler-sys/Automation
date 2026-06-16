@@ -20,7 +20,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// ===================== CONFIG =====================\nconst DRY_RUN = true; // Keep true until live PATCH approved AND call_status enum confirmed by Dan.\nconst BASE = 'https://api.leadmailbox.com/v2';\n// Dan's documented PATCH key for the call outcome is 'call_status' (his example value: \"No Answer\").\n// OPEN: confirm with Dan (a) the full valid call_status value list, and (b) whether call_status IS\n// the two-bucket pipeline status or a SEPARATE field from the main Lead Status. Until then keep DRY_RUN.\nconst STATUS_KEY = 'call_status';\n// Two LMB buckets only. CONFIRM exact spelling/casing vs LMB (case-sensitive) + Dan's enum.\nconst BOOKED_STATUS     = 'Qualified Booked';\nconst NOT_BOOKED_STATUS = 'Contacted Not Booked';\nconst ROUND_ROBIN = [100173, 107230]; // David Milo, Mike Colapinto.\nconst DANGEROUS_STATUSES = new Set(['New', 'Return Requested']);\n// status = one of the two LMB buckets. label = granular disposition -> field_121.\nconst MAP = {\n  'qualified booked':     { status: BOOKED_STATUS,     label: 'Qualified Booked',        booked: true  },\n  'booked':               { status: BOOKED_STATUS,     label: 'Qualified Booked',        booked: true  },\n  'meeting booked':       { status: BOOKED_STATUS,     label: 'Qualified Booked',        booked: true  },\n  'qualified didnt book': { status: NOT_BOOKED_STATUS, label: \"Qualified - Didn't Book\", booked: false },\n  'qualified no book':    { status: NOT_BOOKED_STATUS, label: \"Qualified - Didn't Book\", booked: false },\n  'unqualified':          { status: NOT_BOOKED_STATUS, label: 'Unqualified',             booked: false },\n  'not interested':       { status: NOT_BOOKED_STATUS, label: 'Not Interested',          booked: false },\n  'busy':                 { status: NOT_BOOKED_STATUS, label: 'Busy',                    booked: false },\n  'voicemail':            { status: NOT_BOOKED_STATUS, label: 'Voicemail',               booked: false },\n  'ai voicemail':         { status: NOT_BOOKED_STATUS, label: 'Voicemail',               booked: false },\n  'wrong contact':        { status: NOT_BOOKED_STATUS, label: 'Wrong Contact',           booked: false },\n  'call failed':          { status: NOT_BOOKED_STATUS, label: 'Call Failed',             booked: false },\n  'other':                { status: NOT_BOOKED_STATUS, label: 'Other',                   booked: false },\n  'ai other':             { status: NOT_BOOKED_STATUS, label: 'Other',                   booked: false },\n};\n// ==================================================\n\nconst clean = (s) => (s || '').toString().toLowerCase()\n  .replace(/[‘’ʼ']/g, '')\n  .replace(/[‐-―-]/g, ' ')\n  .replace(/\\s+/g, ' ').trim();\n\nconst body = $json.body || {};\nconst c = body.customData || body || {};\n// leadid: prefer the dedicated field; fall back to parsing it out of the lead_notes blob\n// (\"LeadMailbox Lead ID: 36769638\") if the dedicated GHL field isn't populated yet.\nconst notes = (c.lead_notes || c.note_html || '').toString();\nconst leadid = (c.leadid || c.lead_id || c.LeadID || body.leadid\n  || (notes.match(/LeadMailbox Lead ID:\\s*(\\d+)/i) || [])[1]\n  || '').toString().trim();\nconst disp = clean(c.stage_name || c.disposition || c.call_category || c.status);\nconst m = MAP[disp] || null;\n\nlet userid = null;\nif (m && m.booked) {\n  if (DRY_RUN) {\n    userid = ROUND_ROBIN[0];\n  } else {\n    const sd = $getWorkflowStaticData('global');\n    sd.rr = ((typeof sd.rr === 'number' ? sd.rr : -1) + 1) % ROUND_ROBIN.length;\n    userid = ROUND_ROBIN[sd.rr];\n  }\n}\n\nconst patch = Object.assign(\n  m && m.status ? { [STATUS_KEY]: m.status } : {},\n  m && m.label ? { field_121: m.label } : {},\n  c.appointment ? { field_122: c.appointment } : {},\n  c.appointment_time ? { field_122: c.appointment_time } : {},\n  c.transcript_url ? { field_123: c.transcript_url } : {},\n  c.transcript ? { field_123: c.transcript } : {},\n  c.recording_url ? { field_124: c.recording_url } : {},\n  (c.summary || c.ai_summary) ? { field_125: c.summary || c.ai_summary } : {},\n  (c.note_html || c.note) ? { note: c.note_html || c.note } : {},\n  userid ? { userid } : {},\n);\n\nconst statusValue = m ? m.status : null;\nconst dangerous = statusValue ? DANGEROUS_STATUSES.has(statusValue) : false;\n\nreturn [{ json: {\n  dry_run: DRY_RUN,\n  base: BASE,\n  leadid,\n  ready: !!(m && leadid && !dangerous),\n  reason: !leadid ? 'Missing LeadMailbox leadid.' : (!m ? 'Unmapped disposition: ' + (disp || '(empty)') : (dangerous ? 'Refusing dangerous LeadMailbox status: ' + statusValue : null)),\n  disposition_in: disp,\n  status_key: STATUS_KEY,\n  status_value: statusValue,\n  booked: !!(m && m.booked),\n  patch_body: patch,\n  raw: c,\n}}];\n"
+        "jsCode": "// ===================== CONFIG =====================\nconst BASE = 'https://api.leadmailbox.com/v2';\n// Dan's documented PATCH key for the call outcome is 'call_status' (his example value: \"No Answer\").\n// OPEN: confirm the full valid call_status value list with Dan. A live test contact will reveal\n// whether the bucket values below are accepted (watch the PATCH response).\nconst STATUS_KEY = 'call_status';\n// Two LMB buckets only. CONFIRM exact spelling/casing vs LMB (case-sensitive) + Dan's enum.\nconst BOOKED_STATUS     = 'Qualified Booked';\nconst NOT_BOOKED_STATUS = 'Contacted Not Booked';\nconst ROUND_ROBIN = [100173, 107230]; // David Milo, Mike Colapinto.\nconst DANGEROUS_STATUSES = new Set(['New', 'Return Requested']);\n// status = one of the two LMB buckets. label = granular disposition -> field_121.\nconst MAP = {\n  'qualified booked':     { status: BOOKED_STATUS,     label: 'Qualified Booked',        booked: true  },\n  'booked':               { status: BOOKED_STATUS,     label: 'Qualified Booked',        booked: true  },\n  'meeting booked':       { status: BOOKED_STATUS,     label: 'Qualified Booked',        booked: true  },\n  'qualified didnt book': { status: NOT_BOOKED_STATUS, label: \"Qualified - Didn't Book\", booked: false },\n  'qualified no book':    { status: NOT_BOOKED_STATUS, label: \"Qualified - Didn't Book\", booked: false },\n  'unqualified':          { status: NOT_BOOKED_STATUS, label: 'Unqualified',             booked: false },\n  'not interested':       { status: NOT_BOOKED_STATUS, label: 'Not Interested',          booked: false },\n  'busy':                 { status: NOT_BOOKED_STATUS, label: 'Busy',                    booked: false },\n  'voicemail':            { status: NOT_BOOKED_STATUS, label: 'Voicemail',               booked: false },\n  'ai voicemail':         { status: NOT_BOOKED_STATUS, label: 'Voicemail',               booked: false },\n  'wrong contact':        { status: NOT_BOOKED_STATUS, label: 'Wrong Contact',           booked: false },\n  'call failed':          { status: NOT_BOOKED_STATUS, label: 'Call Failed',             booked: false },\n  'other':                { status: NOT_BOOKED_STATUS, label: 'Other',                   booked: false },\n  'ai other':             { status: NOT_BOOKED_STATUS, label: 'Other',                   booked: false },\n};\n// ==================================================\n\nconst clean = (s) => (s || '').toString().toLowerCase()\n  .replace(/[‘’ʼ']/g, '')\n  .replace(/[‐-―-]/g, ' ')\n  .replace(/\\s+/g, ' ').trim();\n\nconst body = $json.body || {};\nconst c = body.customData || body || {};\n// leadid: prefer the dedicated field; fall back to parsing the lead_notes blob\n// (\"LeadMailbox Lead ID: 36769638\") if the dedicated GHL field isn't populated yet.\nconst notes = (c.lead_notes || c.note_html || '').toString();\nconst leadid = (c.leadid || c.lead_id || c.LeadID || body.leadid\n  || (notes.match(/LeadMailbox Lead ID:\\s*(\\d+)/i) || [])[1]\n  || '').toString().trim();\nconst disp = clean(c.stage_name || c.disposition || c.call_category || c.status);\nconst m = MAP[disp] || null;\n\n// round-robin LO assignment on booked appointments only (counter persists in static data)\nlet userid = null;\nif (m && m.booked) {\n  const sd = $getWorkflowStaticData('global');\n  sd.rr = ((typeof sd.rr === 'number' ? sd.rr : -1) + 1) % ROUND_ROBIN.length;\n  userid = ROUND_ROBIN[sd.rr];\n}\n\nconst patch = Object.assign(\n  m && m.status ? { [STATUS_KEY]: m.status } : {},\n  m && m.label ? { field_121: m.label } : {},\n  c.appointment ? { field_122: c.appointment } : {},\n  c.appointment_time ? { field_122: c.appointment_time } : {},\n  c.transcript_url ? { field_123: c.transcript_url } : {},\n  c.transcript ? { field_123: c.transcript } : {},\n  c.recording_url ? { field_124: c.recording_url } : {},\n  (c.summary || c.ai_summary) ? { field_125: c.summary || c.ai_summary } : {},\n  (c.note_html || c.note) ? { note: c.note_html || c.note } : {},\n  userid ? { userid } : {},\n);\n\nconst statusValue = m ? m.status : null;\nconst dangerous = statusValue ? DANGEROUS_STATUSES.has(statusValue) : false;\n\nreturn [{ json: {\n  base: BASE,\n  leadid,\n  ready: !!(m && leadid && !dangerous),\n  reason: !leadid ? 'Missing LeadMailbox leadid.' : (!m ? 'Unmapped disposition: ' + (disp || '(empty)') : (dangerous ? 'Refusing dangerous LeadMailbox status: ' + statusValue : null)),\n  disposition_in: disp,\n  status_key: STATUS_KEY,\n  status_value: statusValue,\n  booked: !!(m && m.booked),\n  patch_body: patch,\n  raw: c,\n}}];\n"
       },
       "id": "norm-0001",
       "name": "Normalize",
@@ -67,40 +67,6 @@
     },
     {
       "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "leftValue": "",
-            "typeValidation": "loose",
-            "version": 2
-          },
-          "conditions": [
-            {
-              "id": "c-dry",
-              "leftValue": "={{ $json.dry_run }}",
-              "rightValue": true,
-              "operator": {
-                "type": "boolean",
-                "operation": "true",
-                "singleValue": true
-              }
-            }
-          ],
-          "combinator": "and"
-        },
-        "options": {}
-      },
-      "id": "if-dry-0001",
-      "name": "IF: Dry Run?",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.2,
-      "position": [
-        672,
-        736
-      ]
-    },
-    {
-      "parameters": {
         "method": "PATCH",
         "url": "={{ $json.base + '/leads/' + $json.leadid }}",
         "sendBody": true,
@@ -113,23 +79,8 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        944,
-        640
-      ]
-    },
-    {
-      "parameters": {
-        "respondWith": "json",
-        "responseBody": "={{ JSON.stringify({ success: true, dry_run: true, ready: $json.ready, leadid: $json.leadid, disposition_in: $json.disposition_in, status_key: $json.status_key, status_value: $json.status_value, booked: $json.booked, patch_body: $json.patch_body }) }}",
-        "options": {}
-      },
-      "id": "resp-dry-0001",
-      "name": "Respond: Dry Run Preview",
-      "type": "n8n-nodes-base.respondToWebhook",
-      "typeVersion": 1.1,
-      "position": [
-        944,
-        880
+        700,
+        736
       ]
     },
     {
@@ -143,8 +94,8 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
       "position": [
-        1200,
-        640
+        960,
+        736
       ]
     },
     {
@@ -158,14 +109,14 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
       "position": [
-        672,
-        992
+        700,
+        960
       ]
     },
     {
       "parameters": {
-        "content": "## IHL - LeadMailbox disposition write-back\n\nGHL fires this after each AI call.\n\nSend in customData: leadid, stage_name (disposition), summary, transcript_url, recording_url, appointment, note_html.\n\nDRY_RUN=true previews the exact PATCH body without calling LeadMailbox or advancing round-robin.\n\nBefore live: set LMB_API_ACCOUNT=IHLI01 and LMB_API_KEY (rotated); confirm Dan's call_status value enum + the two bucket status names exist in LMB; then flip DRY_RUN false.",
-        "height": 300,
+        "content": "## IHL - LeadMailbox disposition write-back\n\nGHL fires this after each AI call (gated to test contact during testing).\n\nSend in customData: leadid, stage_name (disposition), summary, transcript_url, recording_url, appointment, note_html.\n\nSet n8n env vars: LMB_API_ACCOUNT=IHLI01, LMB_API_KEY (rotated).\n\nGuards: missing leadid / unmapped disposition / dangerous status -> IF:Ready? false -> Respond: Skipped (no write). Confirm Dan's call_status enum + the two bucket status names.",
+        "height": 280,
         "width": 560,
         "color": 4
       },
@@ -206,7 +157,7 @@
       "main": [
         [
           {
-            "node": "IF: Dry Run?",
+            "node": "LeadMailbox: PATCH",
             "type": "main",
             "index": 0
           }
@@ -214,24 +165,6 @@
         [
           {
             "node": "Respond: Skipped",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "IF: Dry Run?": {
-      "main": [
-        [
-          {
-            "node": "Respond: Dry Run Preview",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "LeadMailbox: PATCH",
             "type": "main",
             "index": 0
           }
