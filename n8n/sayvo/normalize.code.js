@@ -75,9 +75,26 @@ if (m && m.booked) {
 }
 
 // Lead Status (bucket) -> status group. AI Status (field_121) -> granular disposition.
-const noteBody = (c.note_html || c.note || '').toString();
+// Tidy the GHL-built note_html: drop empty "Label:" lines and collapse runs of <br>.
+// NOTE: this only tidies — if GHL truncated the note upstream, n8n cannot un-truncate it.
+const cleanNoteHtml = (html) => {
+  if (!html) return '';
+  const parts = html.split(/<br\s*\/?>/i);
+  const kept = parts.filter((seg) => {
+    const t = seg.replace(/&nbsp;/gi, ' ').trim();
+    if (t === '') return true;                       // keep blanks; collapsed below
+    return !/^[^:<>\n]{1,40}:\s*$/.test(t);          // drop "Label:" with empty value
+  });
+  return kept.join('<br>')
+    .replace(/(?:<br>\s*){3,}/gi, '<br><br>')        // collapse 3+ breaks to 2
+    .replace(/^(?:<br>\s*)+/i, '')                   // trim leading breaks
+    .replace(/(?:<br>\s*)+$/i, '')                   // trim trailing breaks
+    .trim();
+};
+
+const noteBody = cleanNoteHtml((c.note_html || c.note || '').toString());
 const dispLine = (m && m.label) ? ('AI Disposition: ' + m.label) : '';
-const noteFinal = [dispLine, noteBody].filter(Boolean).join('\n\n');
+const noteFinal = [dispLine, noteBody].filter(Boolean).join('<br><br>');
 
 const patch = Object.assign(
   m && m.status ? { lead_status: m.status, status: m.status } : {}, // Lead Status (sending both candidate params)
