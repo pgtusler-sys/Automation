@@ -75,36 +75,44 @@ if (m && m.booked) {
 }
 
 // Lead Status (bucket) -> status group. AI Status (field_121) -> granular disposition.
-// Tidy the GHL-built note_html: drop empty "Label:" lines and collapse runs of <br>.
-// NOTE: this only tidies — if GHL truncated the note upstream, n8n cannot un-truncate it.
-const cleanNoteHtml = (html) => {
-  if (!html) return '';
-  const parts = html.split(/<br\s*\/?>/i);
-  const kept = parts.filter((seg) => {
-    const t = seg.replace(/&nbsp;/gi, ' ').trim();
-    if (t === '') return true;                       // keep blanks; collapsed below
-    return !/^[^:<>\n]{1,40}:\s*$/.test(t);          // drop "Label:" with empty value
-  });
-  return kept.join('<br>')
-    .replace(/(?:<br>\s*){3,}/gi, '<br><br>')        // collapse 3+ breaks to 2
-    .replace(/^(?:<br>\s*)+/i, '')                   // trim leading breaks
-    .replace(/(?:<br>\s*)+$/i, '')                   // trim trailing breaks
-    .trim();
-};
+// LeadMailbox shows the note as PLAIN TEXT, so GHL's HTML (<br>, <b>, dividers) looks messy.
+// Rebuild a clean note: convert to text, pull just the useful pieces, drop tags/dividers/
+// empty fields/redundant contact block/footer. (GHL may still truncate upstream; we can't fix that.)
+const toText = (html) => (html || '')
+  .replace(/<br\s*\/?>/gi, '\n')
+  .replace(/<[^>]+>/g, '')
+  .replace(/&nbsp;/gi, ' ')
+  .replace(/&amp;/gi, '&')
+  .replace(/&lt;/gi, '<')
+  .replace(/&gt;/gi, '>')
+  .replace(/&quot;/gi, '"')
+  .replace(/&#39;/gi, "'");
 
-const noteBody = cleanNoteHtml((c.note_html || c.note || '').toString());
-const dispLine = (m && m.label) ? ('AI Disposition: ' + m.label) : '';
-const noteFinal = [dispLine, noteBody].filter(Boolean).join('<br><br>');
+const srcText = toText(c.note_html || c.note || '');
+const pick = (re) => { const mm = srcText.match(re); return mm ? mm[1].trim() : ''; };
+
+const summary    = (c.summary || c.ai_summary || pick(/Summary:\s*([\s\S]*?)(?:\n\s*-{3,}|$)/i)).toString().trim();
+const recording  = (c.recording_url || pick(/Call Recording:\s*(\S+)/i)).toString().trim();
+const callId     = (c.call_id || pick(/Call ID:\s*(.+)/i)).toString().trim();
+const priorNotes = (c.lead_notes_prior || pick(/Lead Notes \(Prior to speaking\):\s*(.+)/i)).toString().trim();
+const transcript = (c.transcript || pick(/Transcript:\s*([\s\S]*?)(?:\n\s*-{3,}|\n*For any questions[\s\S]*$|$)/i)).toString().trim();
+
+const noteLines = [];
+noteLines.push('AI Disposition: ' + (m && m.label ? m.label : (disp || 'Unknown')));
+if (summary)    noteLines.push('', 'Summary:', summary);
+if (priorNotes) noteLines.push('', 'Lead Notes: ' + priorNotes);
+if (recording)  noteLines.push('', 'Recording: ' + recording);
+if (callId)     noteLines.push('Call ID: ' + callId);
+if (transcript) noteLines.push('', 'Transcript:', transcript);
+const noteFinal = noteLines.join('\n');
 
 const patch = Object.assign(
   m && m.status ? { lead_status: m.status, status: m.status } : {}, // Lead Status (sending both candidate params)
   m && m.label ? { field_121: m.label } : {},                       // AI Status = granular disposition
   c.appointment ? { field_122: c.appointment } : {},
   c.appointment_time ? { field_122: c.appointment_time } : {},
-  c.transcript_url ? { field_123: c.transcript_url } : {},
-  c.transcript ? { field_123: c.transcript } : {},
-  c.recording_url ? { field_124: c.recording_url } : {},
-  (c.summary || c.ai_summary) ? { field_125: c.summary || c.ai_summary } : {},
+  recording ? { field_124: recording } : {},                        // AI Recording (best-effort field)
+  summary ? { field_125: summary } : {},                            // AI Summary (Dan-confirmed field)
   noteFinal ? { note: noteFinal } : {},
   userid ? { userid } : {},
 );
