@@ -10,6 +10,7 @@ const BASE = 'https://api.leadmailbox.com/v2';
 // API param unconfirmed (lead_status vs status) -> we send BOTH; LMB ignores the unused key.
 const BOOKED_STATUS     = 'Qualified Booked';      // exact Lead Status leaf (case-sensitive)
 const NOT_BOOKED_STATUS = 'Contacted Not Booked';  // exact Lead Status leaf (case-sensitive)
+const PASS_TO_SAYVO     = 'Pass to SayVo';         // exact Lead Status leaf (case-sensitive) — retry/re-queue bucket
 
 // Owner assignment: LeadMailbox only accepts the integer 'userid'. GHL is the source of truth and
 // sends the assigned user at body.user { firstName, lastName, email }. We map name+email -> userid.
@@ -30,10 +31,12 @@ const MAP = {
   'unqualified':          { status: NOT_BOOKED_STATUS, label: 'Unqualified',             booked: false },
   'not interested':       { status: NOT_BOOKED_STATUS, label: 'Not Interested',          booked: false },
   'busy':                 { status: NOT_BOOKED_STATUS, label: 'Busy',                    booked: false },
-  'voicemail':            { status: NOT_BOOKED_STATUS, label: 'Voicemail',               booked: false },
-  'ai voicemail':         { status: NOT_BOOKED_STATUS, label: 'Voicemail',               booked: false },
-  'wrong contact':        { status: NOT_BOOKED_STATUS, label: 'Wrong Contact',           booked: false },
-  'call failed':          { status: NOT_BOOKED_STATUS, label: 'Call Failed',             booked: false },
+  'voicemail':            { status: PASS_TO_SAYVO,     label: 'Voicemail',               booked: false },
+  'ai voicemail':         { status: PASS_TO_SAYVO,     label: 'Voicemail',               booked: false },
+  'wrong contact':        { status: PASS_TO_SAYVO,     label: 'Wrong Contact',           booked: false },
+  'call failed':          { status: PASS_TO_SAYVO,     label: 'Call Failed',             booked: false },
+  'error':                { status: PASS_TO_SAYVO,     label: 'Error',                   booked: false },
+  'ai error':             { status: PASS_TO_SAYVO,     label: 'Error',                   booked: false },
   'other':                { status: NOT_BOOKED_STATUS, label: 'Other',                   booked: false },
   'ai other':             { status: NOT_BOOKED_STATUS, label: 'Other',                   booked: false },
 };
