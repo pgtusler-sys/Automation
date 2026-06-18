@@ -1,0 +1,181 @@
+{
+  "name": "IHL - Post Outbound GHL Disposition to LeadMailbox",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "leadmailbox/disposition",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "834f026a-9e00-488d-b975-af8728008867",
+      "name": "Webhook: Disposition",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -48,
+        848
+      ],
+      "webhookId": "57046950-09ca-487c-aad8-1d5b2a5f62c6"
+    },
+    {
+      "parameters": {
+        "jsCode": "// ============================================================================\n// Normalize node — \"IHL - Post Outbound GHL Disposition to LeadMailbox\"\n// n8n workflow id: 2qDVTxvir6iZkVY9  (n8n.quetalk.ai)\n// This is the SOURCE OF TRUTH for the Code node. Confirmed working 2026-06-16.\n// ============================================================================\n\n// ===================== CONFIG =====================\nconst BASE = 'https://api.leadmailbox.com/v2';\n// Lead Status drives the left-sidebar Status Groups (NOT call_status, NOT field_121).\n// API param unconfirmed (lead_status vs status) -> we send BOTH; LMB ignores the unused key.\nconst BOOKED_STATUS     = 'Qualified Booked';      // exact Lead Status leaf (case-sensitive)\nconst NOT_BOOKED_STATUS = 'Contacted Not Booked';  // exact Lead Status leaf (case-sensitive)\nconst PASS_TO_SAYVO     = 'Pass to SayVo';         // exact Lead Status leaf (case-sensitive) — retry/re-queue bucket\n\n// Owner assignment: LeadMailbox only accepts the integer 'userid'. GHL is the source of truth and\n// sends the assigned user at body.user { firstName, lastName, email }. We map name+email -> userid.\n// ROUND_ROBIN is only a fallback if GHL sends no recognizable owner.\nconst LO_MAP = [\n  { test: /milo|david|dmilo/,         userid: 100173 }, // David Milo (dmilo@ihlend.com)\n  { test: /colapinto|mike|michael/,   userid: 107230 }, // Mike Colapinto (mike@ihlend.com)\n];\nconst ROUND_ROBIN = [100173, 107230]; // fallback only (David Milo, Mike Colapinto)\n\nconst DANGEROUS_STATUSES = new Set(['New', 'Return Requested']);\nconst MAP = {\n  'qualified booked':     { status: BOOKED_STATUS,     label: 'Qualified Booked',        booked: true  },\n  'booked':               { status: BOOKED_STATUS,     label: 'Qualified Booked',        booked: true  },\n  'meeting booked':       { status: BOOKED_STATUS,     label: 'Qualified Booked',        booked: true  },\n  'qualified didnt book': { status: NOT_BOOKED_STATUS, label: \"Qualified - Didn't Book\", booked: false },\n  'qualified no book':    { status: NOT_BOOKED_STATUS, label: \"Qualified - Didn't Book\", booked: false },\n  'unqualified':          { status: NOT_BOOKED_STATUS, label: 'Unqualified',             booked: false },\n  'not interested':       { status: NOT_BOOKED_STATUS, label: 'Not Interested',          booked: false },\n  'busy':                 { status: NOT_BOOKED_STATUS, label: 'Busy',                    booked: false },\n  'voicemail':            { status: PASS_TO_SAYVO,     label: 'Voicemail',               booked: false },\n  'ai voicemail':         { status: PASS_TO_SAYVO,     label: 'Voicemail',               booked: false },\n  'wrong contact':        { status: PASS_TO_SAYVO,     label: 'Wrong Contact',           booked: false },\n  'call failed':          { status: PASS_TO_SAYVO,     label: 'Call Failed',             booked: false },\n  'error':                { status: PASS_TO_SAYVO,     label: 'Error',                   booked: false },\n  'ai error':             { status: PASS_TO_SAYVO,     label: 'Error',                   booked: false },\n  'other':                { status: NOT_BOOKED_STATUS, label: 'Other',                   booked: false },\n  'ai other':             { status: NOT_BOOKED_STATUS, label: 'Other',                   booked: false },\n};\n// ==================================================\n\nconst clean = (s) => (s || '').toString().toLowerCase()\n  .replace(/[‘’ʼ']/g, '')\n  .replace(/[‐-―-]/g, ' ')\n  .replace(/\\s+/g, ' ').trim();\n\nconst body = $json.body || {};\nconst c = body.customData || body || {};\nconst notes = (c.lead_notes || c.note_html || '').toString();\nconst leadid = (c.leadid || c.lead_id || c.LeadID || body.leadid\n  || (notes.match(/LeadMailbox Lead ID:\\s*(\\d+)/i) || [])[1]\n  || '').toString().trim();\nconst disp = clean(c.stage_name || c.disposition || c.call_category || c.status);\nconst m = MAP[disp] || null;\n\n// Resolve the GHL-assigned owner (body.user) -> LMB userid. Match on name + email together.\nconst u = body.user || {};\nconst ownerName = [u.firstName, u.lastName].filter(Boolean).join(' ');\nconst ownerRaw = (c.owner_name || c.assigned_user || c.assigned_to || c.owner || c.lo_name || ownerName || '').toString();\nconst ownerEmail = (u.email || c.owner_email || '').toString();\nconst ownerMatch = clean(ownerRaw + ' ' + ownerEmail);\nlet ownerUserid = null;\nfor (const lo of LO_MAP) { if (lo.test.test(ownerMatch)) { ownerUserid = lo.userid; break; } }\n\n// Assign only on booked dispositions. Prefer GHL's owner; fall back to round-robin if none recognized.\nlet userid = null;\nif (m && m.booked) {\n  if (ownerUserid) {\n    userid = ownerUserid;\n  } else {\n    const sd = $getWorkflowStaticData('global');\n    sd.rr = ((typeof sd.rr === 'number' ? sd.rr : -1) + 1) % ROUND_ROBIN.length;\n    userid = ROUND_ROBIN[sd.rr];\n  }\n}\n\n// Lead Status (bucket) -> status group. AI Status (field_121) -> granular disposition.\n// LeadMailbox shows the note as PLAIN TEXT, so GHL's HTML (<br>, <b>, dividers) looks messy.\n// Rebuild a clean note: convert to text, pull just the useful pieces, drop tags/dividers/\n// empty fields/redundant contact block/footer. (GHL may still truncate upstream; we can't fix that.)\nconst toText = (html) => (html || '')\n  .replace(/<br\\s*\\/?>/gi, '\\n')\n  .replace(/<[^>]+>/g, '')\n  .replace(/&nbsp;/gi, ' ')\n  .replace(/&amp;/gi, '&')\n  .replace(/&lt;/gi, '<')\n  .replace(/&gt;/gi, '>')\n  .replace(/&quot;/gi, '\"')\n  .replace(/&#39;/gi, \"'\");\n\nconst srcText = toText(c.note_html || c.note || '');\nconst pick = (re) => { const mm = srcText.match(re); return mm ? mm[1].trim() : ''; };\n\nconst summary    = (c.summary || c.ai_summary || pick(/Summary:\\s*([\\s\\S]*?)(?:\\n\\s*-{3,}|$)/i)).toString().trim();\nconst recording  = (c.recording_url || pick(/Call Recording:\\s*(\\S+)/i)).toString().trim();\nconst callId     = (c.call_id || pick(/Call ID:\\s*(.+)/i)).toString().trim();\nconst priorNotes = (c.lead_notes_prior || pick(/Lead Notes \\(Prior to speaking\\):\\s*(.+)/i)).toString().trim();\nconst transcript = (c.transcript || pick(/Transcript:\\s*([\\s\\S]*?)(?:\\n\\s*-{3,}|\\n*For any questions[\\s\\S]*$|$)/i)).toString().trim();\n\nconst noteLines = [];\nnoteLines.push('AI Disposition: ' + (m && m.label ? m.label : (disp || 'Unknown')));\nif (summary)    noteLines.push('', 'Summary:', summary);\nif (priorNotes) noteLines.push('', 'Lead Notes: ' + priorNotes);\nif (recording)  noteLines.push('', 'Recording: ' + recording);\nif (callId)     noteLines.push('Call ID: ' + callId);\nif (transcript) noteLines.push('', 'Transcript:', transcript);\nconst noteFinal = noteLines.join('\\n');\n\nconst patch = Object.assign(\n  m && m.status ? { lead_status: m.status, status: m.status } : {}, // Lead Status (sending both candidate params)\n  m && m.label ? { field_121: m.label } : {},                       // AI Status = granular disposition\n  c.appointment ? { field_122: c.appointment } : {},\n  c.appointment_time ? { field_122: c.appointment_time } : {},\n  recording ? { field_124: recording } : {},                        // AI Recording (best-effort field)\n  summary ? { field_125: summary } : {},                            // AI Summary (Dan-confirmed field)\n  noteFinal ? { note: noteFinal } : {},\n  userid ? { userid } : {},\n);\n\nconst statusValue = m ? m.status : null;\nconst dangerous = statusValue ? DANGEROUS_STATUSES.has(statusValue) : false;\n\nreturn [{ json: {\n  base: BASE,\n  leadid,\n  ready: !!(m && leadid && !dangerous),\n  reason: !leadid ? 'Missing LeadMailbox leadid.' : (!m ? 'Unmapped disposition: ' + (disp || '(empty)') : (dangerous ? 'Refusing dangerous LeadMailbox status: ' + statusValue : null)),\n  disposition_in: disp,\n  status_key: 'lead_status|status',\n  status_value: statusValue,\n  booked: !!(m && m.booked),\n  owner_in: ownerName || ownerEmail,\n  owner_userid: ownerUserid,\n  userid: userid,\n  patch_body: patch,\n  raw: c,\n}}];\n"
+      },
+      "id": "2daa7e66-4978-4713-abd9-17b7fed129e3",
+      "name": "Normalize",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        192,
+        848
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "ihl-disposition-ready-condition",
+              "leftValue": "={{ $json.ready }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "86f2d370-b001-4118-ad4e-dc02b5e8fa3a",
+      "name": "IF: Ready?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        432,
+        848
+      ]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ $json.base + '/leads/' + $json.leadid }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpCustomAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.patch_body) }}",
+        "options": {}
+      },
+      "id": "72d65608-e2ec-4592-a164-94a9b6f775fb",
+      "name": "LeadMailbox: PATCH",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        944,
+        640
+      ],
+      "credentials": {
+        "httpCustomAuth": {
+          "id": "28A2wulYldwugXOj",
+          "name": "Custom Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "id": "48716030-c0bb-4455-8fb8-feec6cc8f7c2",
+      "name": "Respond: Live Result",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1200,
+        640
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: false, skipped: true, ready: false, reason: $json.reason, disposition_in: $json.disposition_in, leadid: $json.leadid }) }}",
+        "options": {}
+      },
+      "id": "04ed9ccf-a6ab-4b5c-9e51-1803c7a463d3",
+      "name": "Respond: Skipped",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        672,
+        992
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook: Disposition": {
+      "main": [
+        [
+          {
+            "node": "Normalize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize": {
+      "main": [
+        [
+          {
+            "node": "IF: Ready?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF: Ready?": {
+      "main": [
+        [
+          {
+            "node": "LeadMailbox: PATCH",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond: Skipped",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LeadMailbox: PATCH": {
+      "main": [
+        [
+          {
+            "node": "Respond: Live Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

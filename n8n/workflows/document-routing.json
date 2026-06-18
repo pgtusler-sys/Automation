@@ -1,0 +1,31 @@
+{
+  "name": "Document Routing - Webhook Trigger",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "document-route",
+        "responseMode": "onReceived"
+      },
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "position": [250, 300],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "command": "=cd /home/user/Automation && npx ts-node -e \"const { routeEmailAttachments } = require('./src/documents/routing-orchestrator'); const { loadCachedClientList } = require('./src/arive/client-list-scraper'); routeEmailAttachments(JSON.parse('{{ JSON.stringify($json.body.email) }}'), loadCachedClientList()).then(r => console.log(JSON.stringify(r))).catch(e => { console.error(e); process.exit(1); })\""
+      },
+      "name": "Route Documents",
+      "type": "n8n-nodes-base.executeCommand",
+      "position": [450, 300],
+      "typeVersion": 1
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [[{ "node": "Route Documents", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1" }
+}

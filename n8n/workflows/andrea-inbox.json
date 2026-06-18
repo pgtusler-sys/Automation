@@ -1,0 +1,31 @@
+{
+  "name": "Andrea Inbox Check - Every 60 Minutes",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "minutes", "minutesInterval": 60 }]
+        }
+      },
+      "name": "Cron Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "position": [250, 300],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "command": "cd /home/user/Automation && npx ts-node -e \"const { getSharedMailboxMessages } = require('./src/outlook/client'); const { settings } = require('./config/settings'); getSharedMailboxMessages(settings.outlook.andreaMailbox, new Date(Date.now() - 3600000).toISOString()).then(msgs => console.log(JSON.stringify({ count: msgs.length, subjects: msgs.map(m => m.subject) }))).catch(e => { console.error(e); process.exit(1); })\""
+      },
+      "name": "Check Andrea Inbox",
+      "type": "n8n-nodes-base.executeCommand",
+      "position": [450, 300],
+      "typeVersion": 1
+    }
+  ],
+  "connections": {
+    "Cron Trigger": {
+      "main": [[{ "node": "Check Andrea Inbox", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1" }
+}
