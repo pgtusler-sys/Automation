@@ -1,0 +1,206 @@
+{
+  "name": "IHL - LeadMailbox Intake to GHL Contact",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "leadmailbox/intake",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "wh-intake-0001",
+      "name": "Webhook: New Lead",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -40,
+        420
+      ],
+      "webhookId": "ihl-lmb-intake-0001"
+    },
+    {
+      "parameters": {
+        "jsCode": "// ===================== CONFIG =====================\n// LeadMailbox new lead -> GHL contact upsert (Independent Lending subaccount).\nconst LOCATION_ID = 'dVtkyM31aGC8IWAKrcvW';\n// GHL custom-field IDs (from discovery)\nconst CF = {\n  leadid_leadmailbox:  'ULqBh4WhEnOVUzXQjVIF', // dedicated LMB lead id (clean number)\n  lead_notes:          'IjxjwllVSYwz7opJCuVp', // AI context blob\n  custom_introduction: 'vadHuBnrarRKLvfcndG8', // first line the AI says\n};\n// ==================================================\n\nconst body = $json.body || $json || {};\nconst g = (k) => (body[k] != null ? String(body[k]).trim() : '');\n\nconst leadid    = g('leadid') || g('LeadID') || g('lead_id');\nconst firstName = g('firstname') || g('first_name') || g('First Name');\nconst lastName  = g('lastname')  || g('last_name')  || g('Last Name');\nconst email     = g('email') || g('Email');\nconst campaign  = g('campaign') || g('Campaign');\nconst phoneRaw  = g('phone') || g('Phone') || g('homephone') || g('HomePhone');\n\n// normalize phone to +1E.164 where possible\nlet phone = phoneRaw.replace(/[^\\d+]/g, '');\nif (phone && !phone.startsWith('+')) {\n  if (phone.length === 10) phone = '+1' + phone;\n  else if (phone.length === 11 && phone.startsWith('1')) phone = '+' + phone;\n}\n\n// AI-context note blob (only include fields LMB actually sends)\nconst lines = [];\nif (leadid)   lines.push('LeadMailbox Lead ID: ' + leadid);\nif (campaign) lines.push('Campaign: ' + campaign);\n[['property','Property'],['loan_purpose','Loan Purpose'],['loan_amount','Loan Amount'],\n ['cash_out','Cash Out'],['property_value','Property Value'],['current_loan','Current Loan'],\n ['loan_type','Loan Type'],['occupancy','Occupancy'],['credit','Credit']\n].forEach(([k,label]) => { const v = g(k); if (v) lines.push(label + ': ' + v); });\nconst leadNotes = lines.join('\\n');\n\n// first line the AI says (hard money / Independent Lending)\nconst intro = \"So \" + (firstName || 'there') +\n  \", it's just Sam from Independent Lending. You uhh submitted an inquiry about a hard money loan with us, right?\";\n\nconst customFields = [];\nif (leadid)   customFields.push({ id: CF.leadid_leadmailbox, value: leadid });\nif (leadNotes) customFields.push({ id: CF.lead_notes, value: leadNotes });\ncustomFields.push({ id: CF.custom_introduction, value: intro });\n\nconst contact = {\n  locationId: LOCATION_ID,\n  firstName: firstName || undefined,\n  lastName:  lastName  || undefined,\n  name: (firstName + ' ' + lastName).trim() || undefined,\n  source: 'LeadMailbox',\n  customFields,\n};\nif (phone) contact.phone = phone;\nif (email && email.indexOf('@') > -1) contact.email = email; // GHL rejects empty/invalid email\n\nreturn [{ json: {\n  ready: !!(leadid && (phone || email)),\n  reason: !leadid ? 'Missing LeadMailbox leadid.' : (!(phone || email) ? 'No phone or email to dedupe on.' : null),\n  leadid,\n  contact,\n  raw: body,\n}}];\n"
+      },
+      "id": "norm-intake-0001",
+      "name": "Normalize",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        200,
+        420
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "c-ready",
+              "leftValue": "={{ $json.ready }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-ready-intake-0001",
+      "name": "IF: Ready?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        440,
+        420
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://services.leadconnectorhq.com/contacts/upsert",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Version",
+              "value": "2021-07-28"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.contact) }}",
+        "options": {}
+      },
+      "id": "ghl-upsert-0001",
+      "name": "GHL: Upsert Contact",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        700,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "id": "resp-ok-0001",
+      "name": "Respond: Upserted",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        960,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: false, skipped: true, reason: $json.reason, leadid: $json.leadid }) }}",
+        "options": {}
+      },
+      "id": "resp-skip-0001",
+      "name": "Respond: Skipped",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        700,
+        560
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## IHL - LeadMailbox INTAKE -> GHL contact\n\nLeadMailbox Service POSTs a new lead here; this upserts a GHL contact in the\nIndependent Lending subaccount with the LMB lead id in the dedicated field\n(contact.leadid_leadmailbox), so the disposition write-back can find it later.\n\nSETUP:\n1) LMB Settings -> Services -> add a Server/HTTP service (Status Trigger = the\n   status your new leads enter, e.g. Future Contact). POST JSON to this webhook.\n   Send these keys (LMB #{...} tokens): leadid=#{LeadID}, firstname=#{First Name},\n   lastname=#{Last Name}, phone=#{Phone}, email=#{Email}, campaign=#{Campaign}\n   (+ any loan fields: loan_purpose, loan_amount, property_value, etc.).\n2) GHL Upsert node: set Authentication = Header Auth credential with\n   Name 'Authorization', Value 'Bearer <GHL Private Integration Token>'.\n   (Token is the pit-... value; store as credential, never hardcode. ROTATE it.)\n3) Activate the workflow and fire a test lead from LMB to confirm payload keys.",
+        "height": 360,
+        "width": 600,
+        "color": 5
+      },
+      "id": "sticky-intake-0001",
+      "name": "Sticky: Setup",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -40,
+        20
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook: New Lead": {
+      "main": [
+        [
+          {
+            "node": "Normalize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize": {
+      "main": [
+        [
+          {
+            "node": "IF: Ready?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF: Ready?": {
+      "main": [
+        [
+          {
+            "node": "GHL: Upsert Contact",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond: Skipped",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GHL: Upsert Contact": {
+      "main": [
+        [
+          {
+            "node": "Respond: Upserted",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": []
+}
