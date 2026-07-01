@@ -1,0 +1,1898 @@
+{
+  "name": "Pipedrive Post Outbound Endpoints (GHL -> n8n -> Pipedrive)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "pipedrive/search-person",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "8efdf614-ce35-4f89-894b-da31664093ec",
+      "name": "Webhook: Person Search",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        1344,
+        816
+      ],
+      "webhookId": "aa11bb22-search-person-0001"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $json.body || {};\nconst phone = ((body.phone) || (body.customData && body.customData.phone) || '').toString();\nreturn [{ json: {\n  base_v2: 'https://api.pipedrive.com/api/v2',\n  phone: phone,\n  phone_digits: phone.replace(/[^0-9]/g, '').slice(-10)\n}}];"
+      },
+      "id": "7283a252-02d1-47fb-9945-2fb1b1e30310",
+      "name": "Search: Config",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1584,
+        816
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.base_v2 + '/persons/search?term=' + encodeURIComponent($json.phone) + '&fields=phone&exact_match=true&limit=1' }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "pipedriveApi",
+        "options": {}
+      },
+      "id": "e69c8196-bef1-4582-8383-fd3142c37dc2",
+      "name": "Pipedrive: Search Person (exact)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1856,
+        816
+      ],
+      "credentials": {
+        "pipedriveApi": {
+          "id": "PJ9gQ9IgnWxWUe5u",
+          "name": "Pipedrive account"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "s-if-exact-c",
+              "leftValue": "={{ ($json.data && $json.data.items ? $json.data.items.length : 0) > 0 }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "c306c9ec-a0b0-4cae-84f6-e8ed08e370d6",
+      "name": "IF: Exact Match Found?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2112,
+        816
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $('Search: Config').item.json.base_v2 + '/persons/search?term=' + encodeURIComponent($('Search: Config').item.json.phone) + '&fields=phone&exact_match=false&limit=5' }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "pipedriveApi",
+        "options": {}
+      },
+      "id": "c4769300-75c6-4842-b585-7994de7bffbe",
+      "name": "Pipedrive: Search Person (loose)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2112,
+        1040
+      ],
+      "credentials": {
+        "pipedriveApi": {
+          "id": "PJ9gQ9IgnWxWUe5u",
+          "name": "Pipedrive account"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const cfg = $('Search: Config').item.json;\nconst items = ($json.data && $json.data.items) ? $json.data.items : [];\nconst want = cfg.phone_digits;\nlet person_id = null;\nfor (const it of items) {\n  const p = it.item || {};\n  const phones = (p.phones || []).map(x => (x || '').toString().replace(/[^0-9]/g, '').slice(-10));\n  if (!want || phones.includes(want) || items.length === 1) { person_id = p.id; break; }\n}\nreturn [{ json: { base_v2: cfg.base_v2, person_id: person_id } }];"
+      },
+      "id": "49f4474e-23c5-4b47-a11e-884c06669e2e",
+      "name": "Search: Pick Person",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2368,
+        928
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "s-if-found-c",
+              "leftValue": "={{ $json.person_id != null }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "91df0020-4cfb-442a-babd-fb4003a4222d",
+      "name": "IF: Person Found?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2624,
+        928
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.base_v2 + '/deals?person_id=' + $json.person_id + '&status=open&sort_by=update_time&sort_direction=desc&limit=1' }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "pipedriveApi",
+        "options": {}
+      },
+      "id": "677ff782-d942-4cfb-8f72-51827e6ca71f",
+      "name": "Pipedrive: List Open Deals",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2896,
+        816
+      ],
+      "credentials": {
+        "pipedriveApi": {
+          "id": "PJ9gQ9IgnWxWUe5u",
+          "name": "Pipedrive account"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const cfg = $('Search: Pick Person').item.json;\nconst deals = ($json.data && Array.isArray($json.data)) ? $json.data : [];\nconst deal_id = deals.length ? deals[0].id : null;\nreturn [{ json: { person_id: cfg.person_id, deal_id: deal_id } }];"
+      },
+      "id": "d4a0663a-b70a-40fd-b7af-27b035b8727d",
+      "name": "Search: Build Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3152,
+        816
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: { person_id: null, deal_id: null } }];"
+      },
+      "id": "821794d9-71c7-4df8-882e-d835069c2c6a",
+      "name": "Search: Empty Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2896,
+        1056
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { person_id: $json.person_id, deal_id: $json.deal_id } }}",
+        "options": {}
+      },
+      "id": "423f2e7c-1c55-4355-b838-72fb9c91d0cd",
+      "name": "Respond: Search",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        3408,
+        928
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "pipedrive/disposition",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "6c13f9fe-ddfb-4a36-9be4-0dfd06cc4b6b",
+      "name": "Webhook: Disposition",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        1344,
+        2672
+      ],
+      "webhookId": "cc33dd44-disposition-0001"
+    },
+    {
+      "parameters": {
+        "jsCode": "// ===== Base host (api_token routes to the right company; no subdomain needed) =====\nconst BASE_V2 = 'https://api.pipedrive.com/api/v2';\nconst BASE_V1 = 'https://api.pipedrive.com/v1';\n// ===== Custom field keys (fill from dealFields discovery only if you use them) =====\nconst CF_DISPOSITION_KEY      = 'PUT_40CHAR_DISPOSITION_FIELD_KEY';\nconst CF_SECONDARY_STATUS_KEY = 'PUT_40CHAR_SECONDARY_FIELD_KEY';\nconst CALLBACK_LABEL_ID       = 0;\nconst PIPELINE_ID_DEFAULT     = 9;   // Online Leads /AI Stages (for create_deal)\n// ===== Owner lookups (prefilled from /users discovery) =====\nconst OWNER_MAP = {\"apps@kingsmencapital.ca\": 31903733, \"ammar@kingsmencapital.ca\": 31856004, \"asad@kingsmencapital.ca\": 31874979, \"azan@kingsmencapital.ca\": 31874990, \"colton@kingsmencapital.ca\": 31902919, \"harkirat@kingsmencapital.ca\": 31874968, \"jay@kingsmencapital.ca\": 31874946, \"jenn@kingsmencapital.ca\": 31723234, \"kevin.lecuyer@pipedrive.com\": 14150914, \"lilympour@kingsmencapital.ca\": 31874935, \"mayaa@kingsmencapital.ca\": 31856015, \"mohamed@kingsmencapital.ca\": 31875001, \"pamela@kingsmencapital.ca\": 31874924, \"tony.xavier@pipedrive.com\": 13840680};\nconst OWNER_BY_NAME = {\"admin\": 31903733, \"ammar sikandar\": 31856004, \"asad sikander\": 31874979, \"azan taj\": 31874990, \"colton vaughan\": 31902919, \"harkirat\": 31874968, \"jay rechtshaffen\": 31874946, \"jennifer belik\": 31723234, \"kevin lecuyer\": 14150914, \"leyli malayeri pour\": 31874935, \"mayaa swing\": 31856015, \"mohamed\": 31875001, \"pamela bouthillier\": 31874924, \"tony xavier\": 13840680};\n\nconst body = $json.body || {};\nconst c = body.customData || body || {};\nconst num    = (v) => (v === undefined || v === null || v === '' || isNaN(Number(v))) ? null : Number(v);\nconst coerce = (v) => (v === undefined || v === null || v === '') ? null : (isNaN(Number(v)) ? v : Number(v));\nconst truthy = (v) => v === true || v === 'true' || v === 1 || v === '1';\nconst clean  = (s) => (s || '').toString().toLowerCase().replace(/[\\u2010-\\u2015]/g, '-').replace(/\\s+/g, ' ').trim();\n\n// Owner: explicit id > email > name (exact, then first-name fallback)\nlet owner_id = null;\nif (c.owner_id) owner_id = num(c.owner_id);\nif (owner_id == null) { const e = clean(c.owner_email); if (e && OWNER_MAP[e] !== undefined) owner_id = OWNER_MAP[e]; }\nif (owner_id == null) {\n  const nm = clean(c.owner_name);\n  if (nm && OWNER_BY_NAME[nm] !== undefined) owner_id = OWNER_BY_NAME[nm];\n  else if (nm) { for (const k in OWNER_BY_NAME) { if (k.split(' ')[0] === nm.split(' ')[0]) { owner_id = OWNER_BY_NAME[k]; break; } } }\n}\n\nreturn [{ json: {\n  base_v2: BASE_V2,\n  base_v1: BASE_V1,\n  deal_id: c.deal_id || null,\n  person_id: c.person_id || body.person_id || null,   // also accept top-level person_id\n  stage_name: (c.stage_name || c.stage || '').toString(),\n  stage_id: num(c.stage_id),                 // optional manual override\n  status: c.status || null,\n  lost_reason: c.lost_reason || null,\n  add_label_id: num(c.add_label_id),\n  remove_label_id: num(c.remove_label_id),\n  callback_label_id: CALLBACK_LABEL_ID,\n  remove_callback: truthy(c.remove_callback),\n  note_html: c.note_html || null,\n  owner_id: owner_id,\n  owner_name_in: c.owner_name || null,\n  cf_disposition_key: CF_DISPOSITION_KEY,\n  cf_disposition_value: coerce(c.cf_disposition),\n  cf_secondary_key: CF_SECONDARY_STATUS_KEY,\n  secondary_status_value: coerce(c.secondary_status),\n  create_deal: truthy(c.create_deal),\n  deal_title: c.deal_title || (c.name ? (c.name + ' - SayVo') : 'SayVo Lead'),\n  pipeline_id: num(c.pipeline_id) || PIPELINE_ID_DEFAULT,\n  raw: c\n}}];"
+      },
+      "id": "91d5fb1e-4ed5-4506-972c-a7c230a8fc93",
+      "name": "Disposition: Normalize",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1616,
+        2672
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "d-if-stage-name",
+              "leftValue": "={{ !!$json.stage_name }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "d-if-stage-deal",
+              "leftValue": "={{ $json.deal_id != null }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "79df855b-a333-462e-84a1-16549311bba8",
+      "name": "IF: Has Stage?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1904,
+        1824
+      ]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ $json.base_v2 + '/deals/' + $json.deal_id }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "pipedriveApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify(Object.assign({ stage_id: $json.stage_id }, $json.owner_id != null ? { owner_id: $json.owner_id } : {})) }}",
+        "options": {}
+      },
+      "id": "35067101-c016-4559-8c85-d31ddd19675e",
+      "name": "Pipedrive: Update Stage",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2896,
+        1584
+      ],
+      "credentials": {
+        "pipedriveApi": {
+          "id": "PJ9gQ9IgnWxWUe5u",
+          "name": "Pipedrive account"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "d-if-won-c",
+              "leftValue": "={{ $json.status === 'won' }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "6c926d28-6563-47f8-90f1-91f12d3f0e22",
+      "name": "IF: Status Won?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1904,
+        2000
+      ]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ $json.base_v2 + '/deals/' + $json.deal_id }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "pipedriveApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ status: 'won' }) }}",
+        "options": {}
+      },
+      "id": "feb29c6c-7c73-44c2-9d86-8e2fa0529080",
+      "name": "Pipedrive: Mark Won",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2192,
+        2000
+      ],
+      "credentials": {
+        "pipedriveApi": {
+          "id": "PJ9gQ9IgnWxWUe5u",
+          "name": "Pipedrive account"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "d-if-lost-c",
+              "leftValue": "={{ $json.status === 'lost' }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "be929491-628d-4ee6-9526-2ef51bb89716",
+      "name": "IF: Status Lost?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1904,
+        2160
+      ]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ $json.base_v2 + '/deals/' + $json.deal_id }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "pipedriveApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ status: 'lost', lost_reason: $json.lost_reason || 'Not specified' }) }}",
+        "options": {}
+      },
+      "id": "e78d89c8-c0ea-4ea4-8e90-1c306ba0112b",
+      "name": "Pipedrive: Mark Lost",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2192,
+        2160
+      ],
+      "credentials": {
+        "pipedriveApi": {
+          "id": "PJ9gQ9IgnWxWUe5u",
+          "name": "Pipedrive account"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "d-if-note-c",
+              "leftValue": "={{ !!$json.note_html }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "2f513558-0803-4c47-9d29-e7ead49b1c51",
+      "name": "IF: Has Note?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1904,
+        2336
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.base_v1 + '/notes' }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "pipedriveApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify(Object.assign({ content: $json.note_html }, $json.deal_id ? { deal_id: Number($json.deal_id) } : {}, $json.person_id ? { person_id: Number($json.person_id) } : {})) }}",
+        "options": {}
+      },
+      "id": "e54e87e8-bdb1-45d5-84f1-1f0d867bc268",
+      "name": "Pipedrive: Add Note (v1)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2192,
+        2336
+      ],
+      "credentials": {
+        "pipedriveApi": {
+          "id": "PJ9gQ9IgnWxWUe5u",
+          "name": "Pipedrive account"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "d-if-cf-c",
+              "leftValue": "={{ $json.cf_disposition_value != null }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "e8a68886-4532-4bd6-b6b2-92feacebd247",
+      "name": "IF: Has Disposition CF?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1904,
+        2672
+      ]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ $json.base_v2 + '/deals/' + $json.deal_id }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "pipedriveApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ custom_fields: { [$json.cf_disposition_key]: $json.cf_disposition_value } }) }}",
+        "options": {}
+      },
+      "id": "7b1fa213-d124-4013-98dd-36e89f73af3c",
+      "name": "Pipedrive: Set Custom Field",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2192,
+        2672
+      ],
+      "credentials": {
+        "pipedriveApi": {
+          "id": "PJ9gQ9IgnWxWUe5u",
+          "name": "Pipedrive account"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "d-if-create-c",
+              "leftValue": "={{ $json.create_deal === true }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "68c8e878-714b-4815-8cf9-d28839d1335c",
+      "name": "IF: Create Deal?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1904,
+        2848
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.base_v2 + '/deals' }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "pipedriveApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify(Object.assign({ title: $json.deal_title, status: 'open' }, $json.person_id ? { person_id: Number($json.person_id) } : {}, $json.pipeline_id ? { pipeline_id: $json.pipeline_id } : {}, $json.stage_id ? { stage_id: $json.stage_id } : {})) }}",
+        "options": {}
+      },
+      "id": "0870cc19-c5e0-445d-9b25-786f3fb0e5a5",
+      "name": "Pipedrive: Create Deal",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2192,
+        2848
+      ],
+      "credentials": {
+        "pipedriveApi": {
+          "id": "PJ9gQ9IgnWxWUe5u",
+          "name": "Pipedrive account"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "d-if-sec-c",
+              "leftValue": "={{ $json.secondary_status_value != null }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "6168154c-ec40-4c43-82e9-e077d17f2aeb",
+      "name": "IF: Has Secondary Status?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1904,
+        3008
+      ]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ $json.base_v2 + '/deals/' + $json.deal_id }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "pipedriveApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ custom_fields: { [$json.cf_secondary_key]: $json.secondary_status_value } }) }}",
+        "options": {}
+      },
+      "id": "a778de82-3115-4051-8ff4-42dafc148c06",
+      "name": "Pipedrive: Set Secondary Status",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2192,
+        3008
+      ],
+      "credentials": {
+        "pipedriveApi": {
+          "id": "PJ9gQ9IgnWxWUe5u",
+          "name": "Pipedrive account"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "d-if-addl-c",
+              "leftValue": "={{ $json.add_label_id != null }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "380cbd93-d2ed-4b89-85a0-e57ad1d0a3a9",
+      "name": "IF: Add Label?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1904,
+        3184
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.base_v2 + '/deals/' + $json.deal_id }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "pipedriveApi",
+        "options": {}
+      },
+      "id": "66ea0985-19eb-44f0-9613-3ee1a5630475",
+      "name": "Get Deal (Add Label)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2192,
+        3184
+      ],
+      "credentials": {
+        "pipedriveApi": {
+          "id": "PJ9gQ9IgnWxWUe5u",
+          "name": "Pipedrive account"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const deal = ($json && $json.data) ? $json.data : {};\nconst existing = Array.isArray(deal.label_ids) ? deal.label_ids.map(Number) : [];\nconst norm = $('Disposition: Normalize').item.json;\nconst target = Number(norm.add_label_id);\nconst merged = Array.from(new Set([...existing, target]));\nreturn [{ json: { base_v2: norm.base_v2, deal_id: norm.deal_id, label_ids: merged } }];"
+      },
+      "id": "aaa5ae10-a85c-4497-b445-d76329715935",
+      "name": "Merge Label IDs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2416,
+        3184
+      ]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ $json.base_v2 + '/deals/' + $json.deal_id }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "pipedriveApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ label_ids: $json.label_ids }) }}",
+        "options": {}
+      },
+      "id": "7b4ee999-5414-4ede-91b2-5ad5376c34dc",
+      "name": "Pipedrive: PATCH Add Label",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2624,
+        3184
+      ],
+      "credentials": {
+        "pipedriveApi": {
+          "id": "PJ9gQ9IgnWxWUe5u",
+          "name": "Pipedrive account"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "d-if-reml-c",
+              "leftValue": "={{ $json.remove_label_id != null }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "c4db8e67-f40d-4c38-9aac-41e513822da5",
+      "name": "IF: Remove Label?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1904,
+        3360
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.base_v2 + '/deals/' + $json.deal_id }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "pipedriveApi",
+        "options": {}
+      },
+      "id": "608c5bd1-912c-4b9b-898e-15d0b1ded0fc",
+      "name": "Get Deal (Remove Label)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2192,
+        3360
+      ],
+      "credentials": {
+        "pipedriveApi": {
+          "id": "PJ9gQ9IgnWxWUe5u",
+          "name": "Pipedrive account"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const deal = ($json && $json.data) ? $json.data : {};\nconst existing = Array.isArray(deal.label_ids) ? deal.label_ids.map(Number) : [];\nconst norm = $('Disposition: Normalize').item.json;\nconst target = Number(norm.remove_label_id);\nconst filtered = existing.filter(x => x !== target);\nreturn [{ json: { base_v2: norm.base_v2, deal_id: norm.deal_id, label_ids: filtered.length ? filtered : null } }];"
+      },
+      "id": "4a3ea316-6f52-4815-ad36-393dbdbdc255",
+      "name": "Filter Label ID",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2416,
+        3360
+      ]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ $json.base_v2 + '/deals/' + $json.deal_id }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "pipedriveApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ label_ids: $json.label_ids }) }}",
+        "options": {}
+      },
+      "id": "e3efd33d-5b9d-4e79-a674-72c8b4b32618",
+      "name": "Pipedrive: PATCH Remove Label",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2624,
+        3360
+      ],
+      "credentials": {
+        "pipedriveApi": {
+          "id": "PJ9gQ9IgnWxWUe5u",
+          "name": "Pipedrive account"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "d-if-cb-c",
+              "leftValue": "={{ $json.remove_callback === true }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "3a0308f6-fcf9-463d-8501-f33748b8b7b0",
+      "name": "IF: Remove Callback?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1904,
+        3520
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.base_v2 + '/deals/' + $json.deal_id }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "pipedriveApi",
+        "options": {}
+      },
+      "id": "872f06ab-b769-4cee-9409-78acb844c05b",
+      "name": "Get Deal (Callback)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2192,
+        3520
+      ],
+      "credentials": {
+        "pipedriveApi": {
+          "id": "PJ9gQ9IgnWxWUe5u",
+          "name": "Pipedrive account"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const deal = ($json && $json.data) ? $json.data : {};\nconst existing = Array.isArray(deal.label_ids) ? deal.label_ids.map(Number) : [];\nconst norm = $('Disposition: Normalize').item.json;\nconst target = Number(norm.callback_label_id);\nconst filtered = existing.filter(x => x !== target);\nreturn [{ json: { base_v2: norm.base_v2, deal_id: norm.deal_id, label_ids: filtered.length ? filtered : null } }];"
+      },
+      "id": "4d7d5364-e5b8-4c86-bbc5-5c1ad5742a08",
+      "name": "Filter Callback Label",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2416,
+        3520
+      ]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ $json.base_v2 + '/deals/' + $json.deal_id }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "pipedriveApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ label_ids: $json.label_ids }) }}",
+        "options": {}
+      },
+      "id": "cab21675-0599-4966-95c2-8edea7c0d760",
+      "name": "Pipedrive: PATCH Remove Callback",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2624,
+        3520
+      ],
+      "credentials": {
+        "pipedriveApi": {
+          "id": "PJ9gQ9IgnWxWUe5u",
+          "name": "Pipedrive account"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "numberInputs": 11
+      },
+      "id": "8a66fea1-3207-4b77-b184-e50260179af7",
+      "name": "Merge: All Results",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        2944,
+        2672
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { success: true } }}",
+        "options": {}
+      },
+      "id": "662781e1-eb1e-45b4-ae79-d1f940c5c065",
+      "name": "Respond: Disposition",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        3216,
+        2672
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## SEARCH ENDPOINT\\n`POST /webhook/pipedrive/search-person`\\nbody `{ \\\"phone\\\": \\\"+1...\\\" }` -> `{ person_id, deal_id }`",
+        "height": 130,
+        "width": 320,
+        "color": 7
+      },
+      "id": "010e9f29-8ace-46ae-a91d-847db1315174",
+      "name": "Section: Search",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1344,
+        656
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## DISPOSITION ENDPOINT\\n`POST /webhook/pipedrive/disposition`\\nNormalize -> 11 parallel IF gates -> Merge -> Respond. Each gate fires only if its key is present.",
+        "height": 150,
+        "width": 360,
+        "color": 7
+      },
+      "id": "8038a544-72ed-4d0c-be39-867ca0c92355",
+      "name": "Section: Disposition",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1344,
+        1632
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "6a74dca0-765a-4e59-80b1-4b732d86dc18",
+      "name": "Discover: Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        1344,
+        4016
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://api.pipedrive.com/v1/stages",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "pipedriveApi",
+        "options": {}
+      },
+      "id": "fb1b6776-9098-41f8-ad07-144019387c9e",
+      "name": "Discover: Stages",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1600,
+        4016
+      ],
+      "credentials": {
+        "pipedriveApi": {
+          "id": "PJ9gQ9IgnWxWUe5u",
+          "name": "Pipedrive account"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "url": "https://api.pipedrive.com/v1/users",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "pipedriveApi",
+        "options": {}
+      },
+      "id": "a904f295-e153-4877-af54-f4777fba376c",
+      "name": "Discover: Owners",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1856,
+        4016
+      ],
+      "credentials": {
+        "pipedriveApi": {
+          "id": "PJ9gQ9IgnWxWUe5u",
+          "name": "Pipedrive account"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Combines Pipedrive stages + active users + deal labels (tags) into one clean list.\nconst stagesResp = $('Discover: Stages').first().json;\nconst usersResp  = $('Discover: Owners').first().json;\nconst fieldsResp = $('Discover: Labels').first().json;\nconst stages = (stagesResp.data || []);\nconst users  = (usersResp.data || []);\nconst fields = (fieldsResp.data || []);\nconst labelField = fields.find(f => f.key === 'label');\nconst labels = (labelField && Array.isArray(labelField.options)) ? labelField.options : [];\nconst out = [];\nfor (const s of stages) out.push({ json: { kind:'STAGE', id:s.id, name:s.name, pipeline_id:s.pipeline_id, order:s.order_nr } });\nfor (const u of users) { if (u.active_flag === false) continue; out.push({ json: { kind:'OWNER', id:u.id, name:u.name, email:(u.email||'').toLowerCase() } }); }\nfor (const l of labels) out.push({ json: { kind:'LABEL', id:l.id, name:l.label } });  // id -> add_label_id\nreturn out;"
+      },
+      "id": "254d67d6-ae60-4b6d-b746-0c8c7e377187",
+      "name": "Discover: IDs Summary",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2368,
+        4016
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## DISCOVERY (run this to get IDs)\\n\\nClick **Execute** on **Discover: IDs Summary** (or run the trigger).\\n\\nOutput table:\\n- `kind = STAGE` -> `id` = **stage_id** (note `pipeline_id`)\\n- `kind = OWNER` -> `id` = **owner_id** (name + email)\\n- `kind = LABEL` -> `id` = **add_label_id / remove_label_id** (your tags)\\n\\nGlobal host, works before COMPANY_DOMAIN is set. Delete this sub-flow once IDs are copied.",
+        "height": 260,
+        "width": 520,
+        "color": 3
+      },
+      "id": "0c2941d3-4f90-4553-9176-3ab604bc14d2",
+      "name": "Sticky: Discovery",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1344,
+        3712
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://api.pipedrive.com/v1/dealFields",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "pipedriveApi",
+        "options": {}
+      },
+      "id": "f9e5556d-114b-4eaf-a8d9-b2569681aa0a",
+      "name": "Discover: Labels",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2112,
+        4176
+      ],
+      "credentials": {
+        "pipedriveApi": {
+          "id": "PJ9gQ9IgnWxWUe5u",
+          "name": "Pipedrive account"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "url": "={{ $('Disposition: Normalize').item.json.base_v2 + '/deals?person_id=' + ($json.data.person_id || $('Disposition: Normalize').item.json.person_id) + '&status=open&limit=50' }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "pipedriveApi",
+        "options": {}
+      },
+      "id": "c61377d1-b383-4cba-99ae-6e087242d64f",
+      "name": "List Person Deals",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2256,
+        1696
+      ],
+      "credentials": {
+        "pipedriveApi": {
+          "id": "PJ9gQ9IgnWxWUe5u",
+          "name": "Pipedrive account"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "d-if-create-tl",
+              "leftValue": "={{ $json.action === 'create' }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "a9ba20b8-de6b-44ac-a254-1ae466b3ee82",
+      "name": "IF: Create TL Deal?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2672,
+        1696
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.base_v2 + '/deals' }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "pipedriveApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify(Object.assign({ title: $json.title, status: 'open', pipeline_id: $json.pipeline_id, stage_id: $json.stage_id, person_id: Number($json.person_id) }, $json.owner_id != null ? { owner_id: $json.owner_id } : {})) }}",
+        "options": {}
+      },
+      "id": "c883a7fd-d6ac-4b91-933f-6be9b4e1d39b",
+      "name": "Create TL Deal",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2896,
+        1792
+      ],
+      "credentials": {
+        "pipedriveApi": {
+          "id": "PJ9gQ9IgnWxWUe5u",
+          "name": "Pipedrive account"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.base_v2 + '/deals/' + $json.deal_id }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "pipedriveApi",
+        "options": {}
+      },
+      "id": "f8c384ba-e988-45bc-8209-fc7136fa2e7c",
+      "name": "Get Deal (Stage)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2096,
+        1696
+      ],
+      "credentials": {
+        "pipedriveApi": {
+          "id": "PJ9gQ9IgnWxWUe5u",
+          "name": "Pipedrive account"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const clean = (s) => (s || '').toString().toLowerCase().replace(/[\\u2018\\u2019\\u02bc']/g, '').replace(/[\\u2010-\\u2015-]/g, ' ').replace(/\\s+/g, ' ').trim();\nconst cfg = $('Disposition: Normalize').item.json;\nconst src = ($('Get Deal (Stage)').item.json && $('Get Deal (Stage)').item.json.data) ? $('Get Deal (Stage)').item.json.data : {};\nconst person_id = src.person_id || cfg.person_id || null;\nconst title = src.title || (cfg.raw && cfg.raw.name) || 'AI Lead';\nconst listDeals = ($json && Array.isArray($json.data)) ? $json.data : [];\nconst name = clean(cfg.stage_name);\n\n// Online Leads / AI Stages (pipeline 9): hyphens & spaces treated the same\nconst ONLINE_LEADS = {\n  'kc website broker': 74, 'comparewise': 72, 'kc website client': 73, 'ai re engagement': 120,\n  'qualified booked': 110, 'qualified didnt book': 111, 'unqualified': 112, 'not interested': 113,\n  'busy': 114, 'ai voicemail': 115, 'voicemail': 116, 'wrong contact': 117, 'other': 118, 'ai other': 118, 'call failed': 119\n};\nconst TERM_LOANS = {\n  'qualified booked': 98, 'qualified didnt book': 97, 'not interested': 97, 'busy': 97\n};\n\nconst byId = {};\nif (src && src.id) byId[src.id] = src;\nfor (const dl of listDeals) { if (dl && dl.id) byId[dl.id] = dl; }\nconst deals = Object.values(byId);\n\nconst out = [];\nlet tlFound = false;\nfor (const dl of deals) {\n  const pid = dl.pipeline_id;\n  let sid = null;\n  if (pid === 9)      { sid = (ONLINE_LEADS[name] !== undefined) ? ONLINE_LEADS[name] : null; }\n  else if (pid === 2) { sid = (TERM_LOANS[name] !== undefined) ? TERM_LOANS[name] : null; tlFound = true; }\n  if (sid != null) {\n    out.push({ json: { action: 'update', base_v2: cfg.base_v2, deal_id: dl.id, stage_id: sid,\n      owner_id: (pid === 2 && cfg.owner_id != null ? cfg.owner_id : null), pipeline_id: pid } });\n  }\n}\nconst tlTarget = (TERM_LOANS[name] !== undefined) ? TERM_LOANS[name] : null;\nif (!tlFound && tlTarget != null && person_id) {\n  out.push({ json: { action: 'create', base_v2: cfg.base_v2, person_id: person_id, pipeline_id: 2,\n    stage_id: tlTarget, owner_id: (cfg.owner_id != null ? cfg.owner_id : null), title: title } });\n}\nreturn out;\n"
+      },
+      "id": "6953931b-526a-4f7f-8c0d-772b241e3468",
+      "name": "Resolve Stage",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2464,
+        1696
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## STAGE + OWNER BY NAME\\n\\nSend from GHL customData:\\n- **deal_id**, **person_id** (from search)\\n- **stage_name** = the disposition, e.g. `Qualified - Didn't Book`, `Busy`, `Qualified - Booked`\\n- **owner_name** (e.g. `Jay Rechtshaffen`) or **owner_email** (more reliable)\\n\\nStage branch: GET deal -> read its pipeline -> map name to the right stage.\\n- Online Leads (9): name -> its own stage\\n- Term Loans (2): Qual-Booked->98; {Qual-Didn't-Book, Not Interested, Busy}->97; else no change\\n\\nOwner is resolved in Normalize (id > email > name) and assigned via the existing owner branch.",
+        "height": 320,
+        "width": 460,
+        "color": 4
+      },
+      "id": "e2a17e90-6dd2-4311-b824-f92f05967233",
+      "name": "Sticky: Stage+Owner by Name1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1904,
+        1296
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook: Person Search": {
+      "main": [
+        [
+          {
+            "node": "Search: Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search: Config": {
+      "main": [
+        [
+          {
+            "node": "Pipedrive: Search Person (exact)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pipedrive: Search Person (exact)": {
+      "main": [
+        [
+          {
+            "node": "IF: Exact Match Found?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF: Exact Match Found?": {
+      "main": [
+        [
+          {
+            "node": "Search: Pick Person",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Pipedrive: Search Person (loose)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pipedrive: Search Person (loose)": {
+      "main": [
+        [
+          {
+            "node": "Search: Pick Person",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search: Pick Person": {
+      "main": [
+        [
+          {
+            "node": "IF: Person Found?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF: Person Found?": {
+      "main": [
+        [
+          {
+            "node": "Pipedrive: List Open Deals",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Search: Empty Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pipedrive: List Open Deals": {
+      "main": [
+        [
+          {
+            "node": "Search: Build Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search: Build Response": {
+      "main": [
+        [
+          {
+            "node": "Respond: Search",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search: Empty Response": {
+      "main": [
+        [
+          {
+            "node": "Respond: Search",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Disposition: Normalize": {
+      "main": [
+        [
+          {
+            "node": "IF: Has Stage?",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "IF: Status Won?",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "IF: Status Lost?",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "IF: Has Note?",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "IF: Has Disposition CF?",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "IF: Create Deal?",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "IF: Has Secondary Status?",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "IF: Add Label?",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "IF: Remove Label?",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "IF: Remove Callback?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF: Has Stage?": {
+      "main": [
+        [
+          {
+            "node": "Get Deal (Stage)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pipedrive: Update Stage": {
+      "main": [
+        [
+          {
+            "node": "Merge: All Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF: Status Won?": {
+      "main": [
+        [
+          {
+            "node": "Pipedrive: Mark Won",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pipedrive: Mark Won": {
+      "main": [
+        [
+          {
+            "node": "Merge: All Results",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "IF: Status Lost?": {
+      "main": [
+        [
+          {
+            "node": "Pipedrive: Mark Lost",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pipedrive: Mark Lost": {
+      "main": [
+        [
+          {
+            "node": "Merge: All Results",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "IF: Has Note?": {
+      "main": [
+        [
+          {
+            "node": "Pipedrive: Add Note (v1)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pipedrive: Add Note (v1)": {
+      "main": [
+        [
+          {
+            "node": "Merge: All Results",
+            "type": "main",
+            "index": 5
+          }
+        ]
+      ]
+    },
+    "IF: Has Disposition CF?": {
+      "main": [
+        [
+          {
+            "node": "Pipedrive: Set Custom Field",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pipedrive: Set Custom Field": {
+      "main": [
+        [
+          {
+            "node": "Merge: All Results",
+            "type": "main",
+            "index": 7
+          }
+        ]
+      ]
+    },
+    "IF: Create Deal?": {
+      "main": [
+        [
+          {
+            "node": "Pipedrive: Create Deal",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pipedrive: Create Deal": {
+      "main": [
+        [
+          {
+            "node": "Merge: All Results",
+            "type": "main",
+            "index": 8
+          }
+        ]
+      ]
+    },
+    "IF: Has Secondary Status?": {
+      "main": [
+        [
+          {
+            "node": "Pipedrive: Set Secondary Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pipedrive: Set Secondary Status": {
+      "main": [
+        [
+          {
+            "node": "Merge: All Results",
+            "type": "main",
+            "index": 10
+          }
+        ]
+      ]
+    },
+    "IF: Add Label?": {
+      "main": [
+        [
+          {
+            "node": "Get Deal (Add Label)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Deal (Add Label)": {
+      "main": [
+        [
+          {
+            "node": "Merge Label IDs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge Label IDs": {
+      "main": [
+        [
+          {
+            "node": "Pipedrive: PATCH Add Label",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pipedrive: PATCH Add Label": {
+      "main": [
+        [
+          {
+            "node": "Merge: All Results",
+            "type": "main",
+            "index": 3
+          }
+        ]
+      ]
+    },
+    "IF: Remove Label?": {
+      "main": [
+        [
+          {
+            "node": "Get Deal (Remove Label)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Deal (Remove Label)": {
+      "main": [
+        [
+          {
+            "node": "Filter Label ID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Label ID": {
+      "main": [
+        [
+          {
+            "node": "Pipedrive: PATCH Remove Label",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pipedrive: PATCH Remove Label": {
+      "main": [
+        [
+          {
+            "node": "Merge: All Results",
+            "type": "main",
+            "index": 4
+          }
+        ]
+      ]
+    },
+    "IF: Remove Callback?": {
+      "main": [
+        [
+          {
+            "node": "Get Deal (Callback)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Deal (Callback)": {
+      "main": [
+        [
+          {
+            "node": "Filter Callback Label",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Callback Label": {
+      "main": [
+        [
+          {
+            "node": "Pipedrive: PATCH Remove Callback",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pipedrive: PATCH Remove Callback": {
+      "main": [
+        [
+          {
+            "node": "Merge: All Results",
+            "type": "main",
+            "index": 9
+          }
+        ]
+      ]
+    },
+    "Merge: All Results": {
+      "main": [
+        [
+          {
+            "node": "Respond: Disposition",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook: Disposition": {
+      "main": [
+        [
+          {
+            "node": "Disposition: Normalize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Discover: Trigger": {
+      "main": [
+        [
+          {
+            "node": "Discover: Stages",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Discover: Stages": {
+      "main": [
+        [
+          {
+            "node": "Discover: Owners",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Discover: Owners": {
+      "main": [
+        [
+          {
+            "node": "Discover: Labels",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Discover: Labels": {
+      "main": [
+        [
+          {
+            "node": "Discover: IDs Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "List Person Deals": {
+      "main": [
+        [
+          {
+            "node": "Resolve Stage",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF: Create TL Deal?": {
+      "main": [
+        [
+          {
+            "node": "Create TL Deal",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Pipedrive: Update Stage",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create TL Deal": {
+      "main": [
+        [
+          {
+            "node": "Merge: All Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Deal (Stage)": {
+      "main": [
+        [
+          {
+            "node": "List Person Deals",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resolve Stage": {
+      "main": [
+        [
+          {
+            "node": "IF: Create TL Deal?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "daf601fc-4a0e-4925-a681-c9f68f9ead69",
+  "meta": {
+    "instanceId": "4ff838958be34d20600dd3394f3026f0d79dc08ced1fe9c4d37080e58025a172"
+  },
+  "nodeGroups": [],
+  "id": "RxNTleRwEIdorPMx",
+  "tags": []
+}

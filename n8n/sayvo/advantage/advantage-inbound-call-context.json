@@ -1,0 +1,145 @@
+{
+  "name": "Advantage - Inbound Call Context",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "advantage/inbound-call-context",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "adv-ctx-wh",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        16,
+        0
+      ],
+      "webhookId": "adv-ctx-wh"
+    },
+    {
+      "parameters": {
+        "url": "https://services.leadconnectorhq.com/contacts/",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpBearerAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "locationId",
+              "value": "REPLACE_GHL_LOCATION_ID"
+            },
+            {
+              "name": "query",
+              "value": "={{ $json.body.user_phone_number }}"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Version",
+              "value": "2021-07-28"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "adv-ctx-http",
+      "name": "GHL: Lookup Contact",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        240,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Advantage — build inbound-call context. Resolve custom fields BY ID (not position).\nconst c = ($json.contacts && $json.contacts[0]) || {};\nconst cf = c.customFields || [];\nconst byId = (id) => { const f = cf.find(x => x.id === id); return (f && f.value != null) ? f.value : \"\"; };\nreturn [{ json: { call_inbound: { custom_variables: {\n  \"full name\": c.contactName || \"\",\n  \"Introduction\": byId(\"REPLACE_FIELD_ID_custom_introduction\"),\n  \"Notes\": byId(\"REPLACE_FIELD_ID_lead_notes\"),\n  \"Last Name\": c.lastNameRaw || \"\",\n  \"Email\": c.email || \"\"\n}}}}];\n"
+      },
+      "id": "adv-ctx-code",
+      "name": "Build Context",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        448,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "id": "adv-ctx-resp",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        656,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Advantage - Inbound Call Context\n\nSynthFlow POSTs user_phone_number; look up GHL contact; return custom_variables.\n\nFILL: REPLACE_GHL_LOCATION_ID + the two REPLACE_FIELD_ID_* in Build Context.\nGHL node: set the Advantage Bearer credential.\nResolves fields BY ID (not array position) so order changes don't break it.",
+        "height": 280,
+        "width": 520,
+        "color": 5
+      },
+      "id": "adv-ctx-note",
+      "name": "Sticky: Setup",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        16,
+        -320
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "GHL: Lookup Contact",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GHL: Lookup Contact": {
+      "main": [
+        [
+          {
+            "node": "Build Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Context": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "tags": []
+}

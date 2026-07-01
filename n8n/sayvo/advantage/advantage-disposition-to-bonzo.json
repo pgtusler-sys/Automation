@@ -1,0 +1,202 @@
+{
+  "name": "Advantage - Post Outbound GHL Disposition to Bonzo",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "advantage/disposition",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "adv-disp-wh",
+      "name": "Webhook: Disposition",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -48,
+        400
+      ],
+      "webhookId": "adv-disp-wh"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Advantage — disposition write-back to Bonzo. FILL REPLACE_* + confirm Bonzo status keys/values.\nconst BASE = 'REPLACE_BONZO_BASE_URL'; // e.g. https://api.getbonzo.com/v1\nconst STATUS_KEY = 'REPLACE_BONZO_STATUS_KEY'; // confirm from Bonzo API docs\nconst BOOKED_STATUS = 'Qualified Booked';       // confirm exact Bonzo value\nconst NOT_BOOKED_STATUS = 'Contacted Not Booked'; // confirm exact Bonzo value\nconst MAP = {\n  'qualified booked':{status:BOOKED_STATUS,label:'Qualified Booked',booked:true},\n  'booked':{status:BOOKED_STATUS,label:'Qualified Booked',booked:true},\n  'qualified didnt book':{status:NOT_BOOKED_STATUS,label:\"Qualified - Didn't Book\",booked:false},\n  'unqualified':{status:NOT_BOOKED_STATUS,label:'Unqualified',booked:false},\n  'not interested':{status:NOT_BOOKED_STATUS,label:'Not Interested',booked:false},\n  'busy':{status:NOT_BOOKED_STATUS,label:'Busy',booked:false},\n  'voicemail':{status:NOT_BOOKED_STATUS,label:'Voicemail',booked:false},\n  'ai voicemail':{status:NOT_BOOKED_STATUS,label:'Voicemail',booked:false},\n  'wrong contact':{status:NOT_BOOKED_STATUS,label:'Wrong Contact',booked:false},\n  'call failed':{status:NOT_BOOKED_STATUS,label:'Call Failed',booked:false},\n  'other':{status:NOT_BOOKED_STATUS,label:'Other',booked:false},\n};\nconst clean=(s)=>(s||'').toString().toLowerCase().replace(/[‘’ʼ']/g,'').replace(/[‐-―-]/g,' ').replace(/\\s+/g,' ').trim();\nconst body=$json.body||{}; const c=body.customData||body||{};\nconst leadid=(c.leadid||c.lead_id||c.LeadID||body.leadid||'').toString().trim();\nconst disp=clean(c.stage_name||c.disposition||c.call_category||c.status);\nconst m=MAP[disp]||null;\nconst patch=Object.assign(\n  m&&m.status?{[STATUS_KEY]:m.status}:{},\n  (c.note_html||c.note)?{note:c.note_html||c.note}:{},\n);\nreturn [{ json:{ base:BASE, leadid, ready:!!(m&&leadid), reason:!leadid?'Missing lead id':(!m?'Unmapped disposition: '+(disp||'(empty)'):null),\n  disposition_in:disp, status_value:m?m.status:null, booked:!!(m&&m.booked), patch_body:patch, raw:c } }];\n"
+      },
+      "id": "adv-disp-norm",
+      "name": "Normalize",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        192,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "c-ready",
+              "leftValue": "={{ $json.ready }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "adv-disp-if",
+      "name": "IF: Ready?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        432,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ $json.base + '/leads/' + $json.leadid }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.patch_body) }}",
+        "options": {}
+      },
+      "id": "adv-disp-bonzo",
+      "name": "Bonzo: Update Lead",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        700,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "id": "adv-disp-ok",
+      "name": "Respond: Result",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        960,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success:false, skipped:true, reason:$json.reason, leadid:$json.leadid }) }}",
+        "options": {}
+      },
+      "id": "adv-disp-skip",
+      "name": "Respond: Skipped",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        700,
+        540
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Advantage - Disposition -> Bonzo\n\nSynthFlow disposition POSTs here; PATCHes the Bonzo lead.\n\nFILL: REPLACE_BONZO_BASE_URL, REPLACE_BONZO_STATUS_KEY, and confirm the two status values.\nBonzo node: set the auth credential (Bearer/Header per Bonzo docs) — never hardcode the key.\nConfirm GHL sends: leadid, stage_name, note_html.",
+        "height": 300,
+        "width": 560,
+        "color": 4
+      },
+      "id": "adv-disp-note",
+      "name": "Sticky: Setup",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -48,
+        60
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook: Disposition": {
+      "main": [
+        [
+          {
+            "node": "Normalize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize": {
+      "main": [
+        [
+          {
+            "node": "IF: Ready?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF: Ready?": {
+      "main": [
+        [
+          {
+            "node": "Bonzo: Update Lead",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond: Skipped",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Bonzo: Update Lead": {
+      "main": [
+        [
+          {
+            "node": "Respond: Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": []
+}

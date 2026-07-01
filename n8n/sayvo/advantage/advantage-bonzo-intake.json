@@ -1,0 +1,206 @@
+{
+  "name": "Advantage - Bonzo Intake to GHL",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "advantage/intake",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "adv-intake-wh",
+      "name": "Webhook: New Lead",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -48,
+        400
+      ],
+      "webhookId": "adv-intake-wh"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Advantage — Bonzo new lead -> GHL contact upsert. FILL the REPLACE_* placeholders.\nconst LOCATION_ID = 'REPLACE_GHL_LOCATION_ID';\nconst CF = {\n  external_lead_id:    'REPLACE_FIELD_ID_external_lead_id', // Bonzo lead id (clean value)\n  lead_notes:          'REPLACE_FIELD_ID_lead_notes',\n  custom_introduction: 'REPLACE_FIELD_ID_custom_introduction',\n};\nconst body = $json.body || $json || {};\nconst g = (k) => (body[k] != null ? String(body[k]).trim() : '');\nconst leadid    = g('leadid') || g('id') || g('lead_id');\nconst firstName = g('firstname') || g('first_name');\nconst lastName  = g('lastname') || g('last_name');\nconst email     = g('email');\nlet phone = (g('phone') || g('mobile')).replace(/[^\\d+]/g,'');\nif (phone && !phone.startsWith('+')) { if (phone.length===10) phone='+1'+phone; else if (phone.length===11 && phone.startsWith('1')) phone='+'+phone; }\nconst intro = \"So \" + (firstName || 'there') + \", it's just <AGENT> from Advantage Lending. You uhh reached out about <PRODUCT>, right?\";\nconst customFields = [];\nif (leadid) customFields.push({ id: CF.external_lead_id, value: leadid });\ncustomFields.push({ id: CF.custom_introduction, value: intro });\nconst contact = { locationId: LOCATION_ID, firstName: firstName||undefined, lastName: lastName||undefined,\n  name: (firstName+' '+lastName).trim()||undefined, source: 'Bonzo', customFields };\nif (phone) contact.phone = phone;\nif (email && email.indexOf('@')>-1) contact.email = email;\nreturn [{ json: { ready: !!(leadid && (phone||email)), reason: !leadid ? 'Missing lead id' : (!(phone||email)?'No phone/email':null), leadid, contact, raw: body } }];\n"
+      },
+      "id": "adv-intake-norm",
+      "name": "Normalize",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        192,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "c-ready",
+              "leftValue": "={{ $json.ready }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "adv-intake-if",
+      "name": "IF: Ready?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        432,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://services.leadconnectorhq.com/contacts/upsert",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Version",
+              "value": "2021-07-28"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.contact) }}",
+        "options": {}
+      },
+      "id": "adv-intake-ghl",
+      "name": "GHL: Upsert Contact",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        700,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "id": "adv-intake-ok",
+      "name": "Respond: Upserted",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        960,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success:false, skipped:true, reason:$json.reason, leadid:$json.leadid }) }}",
+        "options": {}
+      },
+      "id": "adv-intake-skip",
+      "name": "Respond: Skipped",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        700,
+        540
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Advantage - Bonzo INTAKE -> GHL\n\nBonzo Service/webhook POSTs a new lead here; upserts a GHL contact.\n\nFILL: REPLACE_GHL_LOCATION_ID + the CF field IDs in Normalize.\nGHL node: set Header Auth credential (Bearer PIT) for the Advantage subaccount.\nConfirm Bonzo's outbound payload keys (leadid/firstname/phone/email).",
+        "height": 300,
+        "width": 560,
+        "color": 4
+      },
+      "id": "adv-intake-note",
+      "name": "Sticky: Setup",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -48,
+        60
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook: New Lead": {
+      "main": [
+        [
+          {
+            "node": "Normalize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize": {
+      "main": [
+        [
+          {
+            "node": "IF: Ready?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF: Ready?": {
+      "main": [
+        [
+          {
+            "node": "GHL: Upsert Contact",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond: Skipped",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GHL: Upsert Contact": {
+      "main": [
+        [
+          {
+            "node": "Respond: Upserted",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": []
+}
