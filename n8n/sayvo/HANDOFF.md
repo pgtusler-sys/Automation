@@ -76,11 +76,13 @@ Live workflows in n8n (all active):
 4. **Rotate the LeadMailbox api-key** — it was shared in plaintext/screenshots. Store only
    as an n8n credential/env var. Still open unless Dan confirms rotation.
 5. **Kingsmen final config** — full stage_name per GHL branch + production URL switch.
-6. **n8n MCP hardening** — the previous chat session ended specifically because the n8n MCP
-   connection was unstable; the plan was: harden the MCP connection → start a fresh session
-   → read this file. The MCP server worked fine from this (remote) session, so if a new
-   session still sees drops, look at the local MCP transport/config rather than the n8n
-   instance itself.
+6. **n8n MCP connection** — the previous chat session ended because the n8n MCP connection
+   was unstable. The connection is now pinned down in the repo: `.mcp.json` points at
+   `https://n8n.quetalk.ai/mcp-server/http` (HTTP transport) and reads the bearer token
+   from the `N8N_MCP_TOKEN` env var (see `.env.example`; the real token lives only in
+   `.env` / session env, never in git). If a session can't reach n8n, check that
+   `N8N_MCP_TOKEN` is set and the token is still valid (n8n Settings → MCP server) before
+   suspecting the instance. The MCP server worked fine from the 2026-07-01 remote session.
 7. **Repo docs drift** — after any live change in n8n, re-export the workflow JSON into
    `n8n/sayvo/` and update `PROJECT_STATUS.md`, so the next handoff doesn't have to
    re-diagnose the gap between docs and reality.
