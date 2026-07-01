@@ -1,0 +1,8 @@
+node_modules/
+dist/
+.env
+credentials/
+data/feedback.db
+data/state.json
+*.log
+.DS_Store

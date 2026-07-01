@@ -1,0 +1,151 @@
+{
+  "name": "IHL - Inbound Call Context",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ihl/inbound-call-context",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "wh-ctx-0001",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        16,
+        0
+      ],
+      "webhookId": "ihl-inbound-call-context-0001"
+    },
+    {
+      "parameters": {
+        "url": "https://services.leadconnectorhq.com/contacts/",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpBearerAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "locationId",
+              "value": "dVtkyM31aGC8IWAKrcvW"
+            },
+            {
+              "name": "query",
+              "value": "={{ $json.body.user_phone_number }}"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Version",
+              "value": "2021-07-28"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "http-ctx-0001",
+      "name": "GHL: Lookup Contact",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        240,
+        0
+      ],
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "DKHi5w9YOCz03Yyb",
+          "name": "Independent Lending"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Build inbound-call context for the voice agent from the GHL contact lookup.\n// Look up custom fields by ID (robust to GHL field ordering), not by array position.\nconst c = ($json.contacts && $json.contacts[0]) || {};\nconst cf = c.customFields || [];\nconst byId = (id) => { const f = cf.find(x => x.id === id); return (f && f.value != null) ? f.value : \"\"; };\n\nreturn [{ json: {\n  call_inbound: {\n    custom_variables: {\n      \"full name\":  c.contactName || \"\",\n      \"Introduction\": byId(\"vadHuBnrarRKLvfcndG8\"), // custom_introduction\n      \"Notes\":        byId(\"IjxjwllVSYwz7opJCuVp\"), // lead_notes\n      \"Last Name\":  c.lastNameRaw || \"\",\n      \"Email\":      c.email || \"\"\n    }\n  }\n}}];\n"
+      },
+      "id": "code-ctx-0001",
+      "name": "Build Context",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        448,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "id": "resp-ctx-0001",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        656,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## IHL - Inbound Call Context\n\nVoice agent (SynthFlow) calls this webhook at call start with body.user_phone_number.\nWe look up the GHL contact by phone (Independent Lending location) and return\npersonalization variables: full name, Introduction line, Notes, Last Name, Email.\n\nMirror of 'Kingsmen (inbound call context)' but resolves custom fields BY ID\n(custom_introduction / lead_notes) instead of array position.\n\nSETUP: point the SynthFlow inbound webhook at this workflow's Production URL.\nAuth: HTTP node uses the 'Independent Lending' Bearer credential (re-select if import breaks it).",
+        "height": 280,
+        "width": 520,
+        "color": 5
+      },
+      "id": "sticky-ctx-0001",
+      "name": "Sticky: Setup",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        16,
+        -320
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "GHL: Lookup Contact",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GHL: Lookup Contact": {
+      "main": [
+        [
+          {
+            "node": "Build Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Context": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "tags": []
+}

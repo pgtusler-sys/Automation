@@ -1,0 +1,191 @@
+{
+  "name": "IHL - Post Outbound GHL Disposition to LeadMailbox",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "leadmailbox/disposition",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "wh-disp-0001",
+      "name": "Webhook: Disposition",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -48,
+        848
+      ],
+      "webhookId": "ihl-lmb-disposition-0001"
+    },
+    {
+      "parameters": {
+        "jsCode": "// ===================== CONFIG =====================\nconst BASE = 'https://api.leadmailbox.com/v2';\n// Dan's documented PATCH key for the call outcome is 'call_status' (his example value: \"No Answer\").\n// OPEN: confirm the full valid call_status value list with Dan. A live test contact will reveal\n// whether the bucket values below are accepted (watch the PATCH response).\nconst STATUS_KEY = 'call_status';\n// Two LMB buckets only. CONFIRM exact spelling/casing vs LMB (case-sensitive) + Dan's enum.\nconst BOOKED_STATUS     = 'Qualified Booked';\nconst NOT_BOOKED_STATUS = 'Contacted Not Booked';\nconst ROUND_ROBIN = [100173, 107230]; // David Milo, Mike Colapinto.\nconst DANGEROUS_STATUSES = new Set(['New', 'Return Requested']);\n// status = one of the two LMB buckets. label = granular disposition -> field_121.\nconst MAP = {\n  'qualified booked':     { status: BOOKED_STATUS,     label: 'Qualified Booked',        booked: true  },\n  'booked':               { status: BOOKED_STATUS,     label: 'Qualified Booked',        booked: true  },\n  'meeting booked':       { status: BOOKED_STATUS,     label: 'Qualified Booked',        booked: true  },\n  'qualified didnt book': { status: NOT_BOOKED_STATUS, label: \"Qualified - Didn't Book\", booked: false },\n  'qualified no book':    { status: NOT_BOOKED_STATUS, label: \"Qualified - Didn't Book\", booked: false },\n  'unqualified':          { status: NOT_BOOKED_STATUS, label: 'Unqualified',             booked: false },\n  'not interested':       { status: NOT_BOOKED_STATUS, label: 'Not Interested',          booked: false },\n  'busy':                 { status: NOT_BOOKED_STATUS, label: 'Busy',                    booked: false },\n  'voicemail':            { status: NOT_BOOKED_STATUS, label: 'Voicemail',               booked: false },\n  'ai voicemail':         { status: NOT_BOOKED_STATUS, label: 'Voicemail',               booked: false },\n  'wrong contact':        { status: NOT_BOOKED_STATUS, label: 'Wrong Contact',           booked: false },\n  'call failed':          { status: NOT_BOOKED_STATUS, label: 'Call Failed',             booked: false },\n  'other':                { status: NOT_BOOKED_STATUS, label: 'Other',                   booked: false },\n  'ai other':             { status: NOT_BOOKED_STATUS, label: 'Other',                   booked: false },\n};\n// ==================================================\n\nconst clean = (s) => (s || '').toString().toLowerCase()\n  .replace(/[‘’ʼ']/g, '')\n  .replace(/[‐-―-]/g, ' ')\n  .replace(/\\s+/g, ' ').trim();\n\nconst body = $json.body || {};\nconst c = body.customData || body || {};\n// leadid: prefer the dedicated field; fall back to parsing the lead_notes blob\n// (\"LeadMailbox Lead ID: 36769638\") if the dedicated GHL field isn't populated yet.\nconst notes = (c.lead_notes || c.note_html || '').toString();\nconst leadid = (c.leadid || c.lead_id || c.LeadID || body.leadid\n  || (notes.match(/LeadMailbox Lead ID:\\s*(\\d+)/i) || [])[1]\n  || '').toString().trim();\nconst disp = clean(c.stage_name || c.disposition || c.call_category || c.status);\nconst m = MAP[disp] || null;\n\n// round-robin LO assignment on booked appointments only (counter persists in static data)\nlet userid = null;\nif (m && m.booked) {\n  const sd = $getWorkflowStaticData('global');\n  sd.rr = ((typeof sd.rr === 'number' ? sd.rr : -1) + 1) % ROUND_ROBIN.length;\n  userid = ROUND_ROBIN[sd.rr];\n}\n\nconst patch = Object.assign(\n  m && m.status ? { [STATUS_KEY]: m.status } : {},\n  m && m.label ? { field_121: m.label } : {},\n  c.appointment ? { field_122: c.appointment } : {},\n  c.appointment_time ? { field_122: c.appointment_time } : {},\n  c.transcript_url ? { field_123: c.transcript_url } : {},\n  c.transcript ? { field_123: c.transcript } : {},\n  c.recording_url ? { field_124: c.recording_url } : {},\n  (c.summary || c.ai_summary) ? { field_125: c.summary || c.ai_summary } : {},\n  (c.note_html || c.note) ? { note: c.note_html || c.note } : {},\n  userid ? { userid } : {},\n);\n\nconst statusValue = m ? m.status : null;\nconst dangerous = statusValue ? DANGEROUS_STATUSES.has(statusValue) : false;\n\nreturn [{ json: {\n  base: BASE,\n  leadid,\n  ready: !!(m && leadid && !dangerous),\n  reason: !leadid ? 'Missing LeadMailbox leadid.' : (!m ? 'Unmapped disposition: ' + (disp || '(empty)') : (dangerous ? 'Refusing dangerous LeadMailbox status: ' + statusValue : null)),\n  disposition_in: disp,\n  status_key: STATUS_KEY,\n  status_value: statusValue,\n  booked: !!(m && m.booked),\n  patch_body: patch,\n  raw: c,\n}}];\n"
+      },
+      "id": "norm-0001",
+      "name": "Normalize",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        192,
+        848
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "c-ready",
+              "leftValue": "={{ $json.ready }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-ready-0001",
+      "name": "IF: Ready?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        432,
+        848
+      ]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ $json.base + '/leads/' + $json.leadid }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify(Object.assign({ 'api-account': $env.LMB_API_ACCOUNT || 'IHLI01', 'api-key': $env.LMB_API_KEY }, $json.patch_body)) }}",
+        "options": {}
+      },
+      "id": "lmb-patch-0001",
+      "name": "LeadMailbox: PATCH",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        700,
+        736
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "id": "resp-live-0001",
+      "name": "Respond: Live Result",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        960,
+        736
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: false, skipped: true, ready: false, reason: $json.reason, disposition_in: $json.disposition_in, leadid: $json.leadid }) }}",
+        "options": {}
+      },
+      "id": "resp-skip-0001",
+      "name": "Respond: Skipped",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        700,
+        960
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## IHL - LeadMailbox disposition write-back\n\nGHL fires this after each AI call (gated to test contact during testing).\n\nSend in customData: leadid, stage_name (disposition), summary, transcript_url, recording_url, appointment, note_html.\n\nSet n8n env vars: LMB_API_ACCOUNT=IHLI01, LMB_API_KEY (rotated).\n\nGuards: missing leadid / unmapped disposition / dangerous status -> IF:Ready? false -> Respond: Skipped (no write). Confirm Dan's call_status enum + the two bucket status names.",
+        "height": 280,
+        "width": 560,
+        "color": 4
+      },
+      "id": "sticky-0001",
+      "name": "Sticky: Setup",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -48,
+        528
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook: Disposition": {
+      "main": [
+        [
+          {
+            "node": "Normalize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize": {
+      "main": [
+        [
+          {
+            "node": "IF: Ready?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF: Ready?": {
+      "main": [
+        [
+          {
+            "node": "LeadMailbox: PATCH",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond: Skipped",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LeadMailbox: PATCH": {
+      "main": [
+        [
+          {
+            "node": "Respond: Live Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": []
+}
