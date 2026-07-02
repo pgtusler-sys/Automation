@@ -42,8 +42,14 @@ interface CapturedCall {
   responseBody?: unknown;
 }
 
-function isWorkflowApiCall(url: string): boolean {
-  return /leadconnectorhq\.com/.test(url) && /workflow|automation/i.test(url);
+function isWorkflowApiCall(url: string, method: string): boolean {
+  // GHL stores the workflow node graph as a file in Firebase Storage; the
+  // builder fetches and (on save) rewrites it there, so capture that domain.
+  if (/firebasestorage\.googleapis\.com/.test(url)) return true;
+  if (/leadconnectorhq\.com/.test(url) && /workflow|automation/i.test(url)) return true;
+  // Any write on any domain during the session is worth keeping (asset files
+  // are only ever GETs, so this stays quiet until the user clicks Save).
+  return method !== 'GET' && !url.startsWith('blob:') && !url.startsWith('data:');
 }
 
 async function findBuilderFrame(page: Page, timeoutMs = 60_000): Promise<Frame | null> {
@@ -88,9 +94,8 @@ async function main() {
 
   page.on('response', async (response) => {
     const url = response.url();
-    if (!isWorkflowApiCall(url)) return;
-
     const request = response.request();
+    if (!isWorkflowApiCall(url, request.method())) return;
     const headers: Record<string, string> = {};
     const allHeaders = await request.allHeaders().catch(() => ({} as Record<string, string>));
     for (const name of INTERESTING_HEADERS) {
