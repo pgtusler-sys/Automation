@@ -11,7 +11,11 @@
     "setup:dropbox": "ts-node scripts/setup-dropbox.ts",
     "setup:google": "ts-node scripts/setup-google.ts",
     "test:connections": "ts-node scripts/test-connections.ts",
-    "test": "jest --config jest.config.js"
+    "test": "jest --config jest.config.js",
+    "ghl:login": "ts-node scripts/ghl/session.ts",
+    "ghl:capture": "ts-node scripts/ghl/capture.ts",
+    "ghl:bulk": "ts-node scripts/ghl/bulk-edit.ts",
+    "ghl:endpoints": "ts-node scripts/ghl/build-endpoints.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.39.0",
@@ -30,6 +34,7 @@
     "jest": "^29.7.0",
     "ts-jest": "^29.2.5",
     "ts-node": "^10.9.2",
-    "typescript": "^5.7.0"
+    "typescript": "^5.7.0",
+    "playwright": "^1.49.0"
   }
 }
