@@ -4,5 +4,6 @@ dist/
 credentials/
 data/feedback.db
 data/state.json
+data/ghl/
 *.log
 .DS_Store
