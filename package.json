@@ -14,7 +14,8 @@
     "test": "jest --config jest.config.js",
     "ghl:login": "ts-node scripts/ghl/session.ts",
     "ghl:capture": "ts-node scripts/ghl/capture.ts",
-    "ghl:bulk": "ts-node scripts/ghl/bulk-edit.ts"
+    "ghl:bulk": "ts-node scripts/ghl/bulk-edit.ts",
+    "ghl:endpoints": "ts-node scripts/ghl/build-endpoints.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.39.0",

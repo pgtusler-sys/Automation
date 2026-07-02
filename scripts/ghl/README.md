@@ -62,8 +62,8 @@ npm run ghl:login
 #    This records both the "load workflow" GET and the "save" PUT/POST.
 npm run ghl:capture -- "https://app.gohighlevel.com/v2/location/<LOC>/automation/workflows/<ID>"
 
-# 3. Inspect data/ghl/capture/<timestamp>/ and copy the relevant calls into
-#    data/ghl/endpoints.json (a template is written for you on first capture).
+# 3. Build endpoints.json from the newest capture automatically:
+npm run ghl:endpoints
 
 # 4. Write a transform (see transforms/example-rename.ts), then dry-run it:
 npm run ghl:bulk -- --transform scripts/ghl/transforms/example-rename.ts --workflow <ID>

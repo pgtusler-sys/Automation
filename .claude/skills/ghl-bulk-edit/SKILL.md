@@ -36,11 +36,10 @@ clicking. All commands run from the repo root.
 2. **Capture (once, or after 401s):**
    `npm run ghl:capture -- "<workflow builder URL>"` — user makes one tiny
    node edit + Save (not Publish) in the opened browser, presses Enter.
-   Then build `data/ghl/endpoints.json` from the capture: `get` = the
-   `includeScheduledPauseInfo` GET, `save` = the PUT to
-   `backend.leadconnectorhq.com/workflow/...`, `triggers` = the
-   `/trigger?workflowId=` GET. Replace the workflow id in URLs with
-   `{workflowId}`; keep the captured `requestHeaders`.
+   Then `npm run ghl:endpoints` builds `data/ghl/endpoints.json` from the
+   newest capture automatically. Auth is scoped per sub-account (and
+   white-label domains like app.aicrm.agency are separate logins):
+   switching sub-accounts = redo login + capture + ghl:endpoints.
 3. **Write a transform** in `scripts/ghl/transforms/` — a module
    default-exporting `(workflow) => workflow | null` (null = skip this
    workflow). Iterate `workflow.workflowData.templates`, edit
