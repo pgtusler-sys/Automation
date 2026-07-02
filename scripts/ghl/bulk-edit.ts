@@ -34,6 +34,9 @@ interface EndpointConfig {
 interface Endpoints {
   get: EndpointConfig;
   save: EndpointConfig;
+  /** Optional: the builder's GET .../trigger?workflowId=... call. Used to fill
+   * the oldTriggers/newTriggers bookkeeping on save. */
+  triggers?: EndpointConfig;
 }
 
 type Transform = (workflow: any) => any | Promise<any>;
@@ -110,6 +113,56 @@ function diffPaths(before: any, after: any, prefix = '', out: string[] = []): st
   return out;
 }
 
+/** Map of step/template id -> serialized step, for change detection. */
+function stepMap(workflow: any): Map<string, string> {
+  const map = new Map<string, string>();
+  const templates: any[] = workflow?.workflowData?.templates ?? [];
+  for (const template of templates) {
+    if (template?.id) map.set(template.id, JSON.stringify(template));
+  }
+  return map;
+}
+
+/**
+ * Build the save body the way the GHL builder does: the full workflow
+ * document plus bookkeeping about which steps changed. Trigger edits are
+ * deliberately unsupported (triggersChanged stays false).
+ */
+function buildSaveBody(original: any, modified: any, triggers: unknown[]): any {
+  const before = stepMap(original);
+  const after = stepMap(modified);
+
+  const modifiedSteps: string[] = [];
+  const createdSteps: string[] = [];
+  const deletedSteps: string[] = [];
+  for (const [id, json] of after) {
+    if (!before.has(id)) createdSteps.push(id);
+    else if (before.get(id) !== json) modifiedSteps.push(id);
+  }
+  for (const id of before.keys()) {
+    if (!after.has(id)) deletedSteps.push(id);
+  }
+
+  return {
+    ...modified,
+    modifiedSteps,
+    createdSteps,
+    deletedSteps,
+    triggersChanged: false,
+    oldTriggers: triggers,
+    newTriggers: triggers,
+  };
+}
+
+async function fetchTriggers(endpoints: Endpoints, workflowId: string): Promise<unknown[]> {
+  if (!endpoints.triggers?.url) return [];
+  const response = await callEndpoint(endpoints.triggers, workflowId);
+  if (Array.isArray(response)) return response;
+  if (Array.isArray(response?.triggers)) return response.triggers;
+  if (Array.isArray(response?.data)) return response.data;
+  return [];
+}
+
 async function callEndpoint(endpoint: EndpointConfig, workflowId: string, body?: unknown) {
   const url = endpoint.url.replace('{workflowId}', workflowId);
   const response = await fetch(url, {
@@ -169,8 +222,15 @@ async function main() {
       for (const change of changes.slice(0, 50)) console.log(`    ${change}`);
       if (changes.length > 50) console.log(`    ... and ${changes.length - 50} more`);
 
+      const triggers = await fetchTriggers(endpoints, id);
+      const saveBody = buildSaveBody(original, modified, triggers);
+      console.log(
+        `[${id}] steps modified: ${saveBody.modifiedSteps.length}, ` +
+          `created: ${saveBody.createdSteps.length}, deleted: ${saveBody.deletedSteps.length}`
+      );
+
       if (apply) {
-        await callEndpoint(endpoints.save, id, modified);
+        await callEndpoint(endpoints.save, id, saveBody);
         console.log(`[${id}] SAVED (not published - review in the builder before publishing)`);
       }
     } catch (err) {
